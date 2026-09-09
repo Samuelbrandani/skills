@@ -13,6 +13,7 @@ metadata:
 # Figma → Flutter
 
 > Versão em português: `SKILL.pt-BR.md` (mesmo conteúdo; as referências em `references/pt-BR/`).
+> Works in Claude Code, Codex, Cursor and any Agent Skills host. Harness-specific mechanics (authorizing the Figma MCP, tool names, big results, asking the user, plan mode) are in `references/agents.md` — read your agent's column once.
 
 A layout diverges from Figma for a predictable reason: someone implemented from a **description** of the design instead of the design. Prose carries structure and rules; it does not carry padding, radius, font weight, shadow, or exact color. Whoever reads prose gets the composition right and invents the pixel.
 
@@ -31,11 +32,11 @@ If the request does not say which: screen exists in code + request is a question
 
 ## Phase 0 — Preflight (blocking)
 
-1. `whoami` on the Figma MCP. If the only Figma tools available are `authenticate` / `complete_authentication`, the server is not authorized: call `authenticate`, hand the user the URL, and **do not fall back** to prose, an old screenshot, or memory. While the user authorizes, run phase 2 (repo profile) — it does not depend on Figma. After authorization the real tools appear as deferred tools; load them with `ToolSearch("select:mcp__figma__whoami,mcp__figma__get_metadata,…")` before calling.
+1. `whoami` on the Figma MCP. If it is missing or fails, the server is not connected or not authorized: get it authorized the way your agent does it (Claude Code: `authenticate` and hand the user the URL; Codex: `codex mcp login figma` or the `FIGMA_OAUTH_TOKEN` variable — see `references/agents.md`) and **do not fall back** to prose, an old screenshot, or memory. While the user authorizes, run phase 2 (repo profile) — it does not depend on Figma. In Claude Code the real tools appear as deferred tools after authorization; load them with `ToolSearch("select:mcp__figma__whoami,mcp__figma__get_metadata,…")` before calling.
 2. Parse the link: `figma.com/design/<fileKey>/...?node-id=7880-15366` → `fileKey`, `nodeId = 7880:15366` (hyphen becomes colon).
-3. `get_metadata` on the node. On a section or page it **overflows the tool-result limit** and the harness saves it to a file; do not call it again — run `scripts/figma_outline.py <saved-file> --depth 1` to list the screens and their sizes, and `--node <id> --depth 3` to outline one screen. Write down the **frame width** of every screen. Every check in phase 7 happens at that width; comparing a 490 px render with a 390 px frame invents divergence that does not exist.
+3. `get_metadata` on the node. On a section or page it **overflows the tool-result limit**. Claude Code saves the result to a file: do not call it again, run `scripts/figma_outline.py <saved-file> --depth 1` to list the screens and their sizes, and `--node <id> --depth 3` to outline one screen. Agents that truncate instead (Codex) should call `get_metadata` per screen frame from the start. Write down the **frame width** of every screen. Every check in phase 7 happens at that width; comparing a 490 px render with a 390 px frame invents divergence that does not exist.
 4. Budget the calls. The MCP truncates around 20 KB per response, and Starter/View seats get 6 calls per month (`whoami` shows the seat). One screen costs at least metadata + screenshot + variables + context; plan the batch before calling, and batch independent calls in one message.
-5. If the repo's `CLAUDE.md` (or a parent's) demands plan mode before implementing, phases 0–5 **are the plan**: write them with `references/plan-template.md` and hand the plan over; phases 6–7 run after approval, possibly by another agent.
+5. If the repo's `CLAUDE.md` / `AGENTS.md` (or a parent's) demands a plan before implementing, phases 0–5 **are the plan**: write them with `references/plan-template.md` and hand the plan over (Claude Code: plan mode; other agents: the plan file plus an explicit "go" in chat); phases 6–7 run after approval, possibly by another agent.
 
 ## Phase 1 — Node discovery
 
@@ -62,7 +63,7 @@ Three rules come out of this phase and are not negotiable:
 
 ## Decision batch (ask once, early)
 
-Some decisions are the user's, and asking them one at a time mid-flight stalls the work. As soon as phases 1 and 2 are done, ask them together in one `AskUserQuestion`, with a recommended option first:
+Some decisions are the user's, and asking them one at a time mid-flight stalls the work. As soon as phases 1 and 2 are done, ask them together — one `AskUserQuestion` in Claude Code, one numbered list in chat elsewhere — with a recommended option first:
 
 - **Scope** when the node has several frames: which screens or bodies enter this round.
 - **Brand color vs accessibility token** when the Figma uses a hex that the design system deliberately replaced (e.g. brand pink vs its AA variant).

@@ -1,6 +1,7 @@
 # Figma → Flutter (versão em português)
 
 > Espelho de `SKILL.md`. O arquivo que o agente carrega é o `SKILL.md` em inglês; este existe para leitura humana e revisão. Referências em português em `references/pt-BR/`.
+> Funciona em Claude Code, Codex, Cursor e qualquer host de Agent Skills. A mecânica específica de cada harness (autorizar o MCP do Figma, nomes de ferramentas, resultados grandes, perguntar ao usuário, plan mode) está em `references/pt-BR/agents.md` — leia a coluna do seu agente uma vez.
 
 Um layout diverge do Figma por um motivo previsível: alguém implementou a partir de uma **descrição** do design em vez do design. Prosa carrega estrutura e regra; não carrega padding, raio, peso de fonte, sombra nem cor exata. Quem lê prosa acerta a composição e inventa o pixel.
 
@@ -19,11 +20,11 @@ Se o pedido não disser qual: tela existe + pedido é pergunta → `auditar`; te
 
 ## Fase 0 — Pré-voo (bloqueante)
 
-1. `whoami` no MCP do Figma. Se as únicas ferramentas do Figma disponíveis forem `authenticate` / `complete_authentication`, o servidor não está autorizado: chame `authenticate`, entregue a URL ao usuário e **não caia em fallback** por prosa, captura antiga ou memória. Enquanto o usuário autoriza, rode a fase 2 (perfil do repo) — ela não depende do Figma. Depois da autorização as ferramentas reais aparecem como deferred; carregue com `ToolSearch("select:mcp__figma__whoami,mcp__figma__get_metadata,…")` antes de chamar.
+1. `whoami` no MCP do Figma. Se ele não existe ou falha, o servidor não está conectado ou autorizado: autorize do jeito do seu agente (Claude Code: `authenticate` e entregue a URL ao usuário; Codex: `codex mcp login figma` ou a variável `FIGMA_OAUTH_TOKEN` — veja `references/pt-BR/agents.md`) e **não caia em fallback** por prosa, captura antiga ou memória. Enquanto o usuário autoriza, rode a fase 2 (perfil do repo) — ela não depende do Figma. No Claude Code as ferramentas reais aparecem como deferred depois da autorização; carregue com `ToolSearch("select:mcp__figma__whoami,mcp__figma__get_metadata,…")` antes de chamar.
 2. Extraia do link: `figma.com/design/<fileKey>/...?node-id=7880-15366` → `fileKey`, `nodeId = 7880:15366` (hífen vira dois-pontos).
-3. `get_metadata` no nó. Em seção ou página ele **estoura o limite do resultado** e o harness salva num arquivo; não chame de novo — rode `scripts/figma_outline.py <arquivo> --depth 1` para listar as telas com tamanho, e `--node <id> --depth 3` para o outline de uma tela. Anote a **largura do frame** de cada tela. Toda conferência da fase 7 acontece nessa largura; comparar um render de 490 px com um frame de 390 px inventa divergência que não existe.
+3. `get_metadata` no nó. Em seção ou página ele **estoura o limite do resultado**. O Claude Code salva o resultado num arquivo: não chame de novo, rode `scripts/figma_outline.py <arquivo> --depth 1` para listar as telas com tamanho, e `--node <id> --depth 3` para o outline de uma tela. Agentes que truncam (Codex) devem chamar `get_metadata` por frame de tela desde o início. Anote a **largura do frame** de cada tela. Toda conferência da fase 7 acontece nessa largura; comparar um render de 490 px com um frame de 390 px inventa divergência que não existe.
 4. Orce as chamadas. O MCP trunca em ~20 KB por resposta, e seats Starter/View têm 6 chamadas por mês (`whoami` mostra o seat). Uma tela custa no mínimo metadata + screenshot + variáveis + contexto; planeje o lote antes de chamar e agrupe chamadas independentes numa mensagem.
-5. Se o `CLAUDE.md` do repo (ou de um diretório pai) exige plan mode antes de implementar, as fases 0–5 **são o plano**: escreva-as com `references/pt-BR/plan-template.md` e entregue o plano; as fases 6–7 rodam depois da aprovação, possivelmente por outro agente.
+5. Se o `CLAUDE.md` / `AGENTS.md` do repo (ou de um diretório pai) exige plano antes de implementar, as fases 0–5 **são o plano**: escreva-as com `references/pt-BR/plan-template.md` e entregue o plano (Claude Code: plan mode; outros agentes: o arquivo do plano mais um "vai" explícito no chat); as fases 6–7 rodam depois da aprovação, possivelmente por outro agente.
 
 ## Fase 1 — Discovery do nó
 
@@ -50,7 +51,7 @@ Três regras saem desta fase e não são negociáveis:
 
 ## Lote de decisões (pergunte uma vez, cedo)
 
-Algumas decisões são do usuário, e perguntar uma por vez no meio do trabalho trava tudo. Assim que as fases 1 e 2 terminarem, pergunte tudo junto num único `AskUserQuestion`, com a opção recomendada primeiro:
+Algumas decisões são do usuário, e perguntar uma por vez no meio do trabalho trava tudo. Assim que as fases 1 e 2 terminarem, pergunte tudo junto — um `AskUserQuestion` no Claude Code, uma lista numerada no chat nos demais — com a opção recomendada primeiro:
 
 - **Escopo** quando o nó tem vários frames: quais telas ou corpos entram nesta rodada.
 - **Cor de marca vs token de acessibilidade** quando o Figma usa um hex que o design system substituiu de propósito (ex.: rosa da marca vs variante AA).

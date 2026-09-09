@@ -125,8 +125,9 @@ def main(argv: list[str]) -> int:
         if doc_names.match(p.name) and len(p.relative_to(root).parts) <= 3:
             print(f"- {rel(p, root)}")
     for up in (root.parent, root.parent.parent):
-        if (up / "CLAUDE.md").is_file():
-            print(f'- parent: {up / "CLAUDE.md"}  ← inherited rules (e.g. "plan mode first")')
+        for name in ("CLAUDE.md", "AGENTS.md"):
+            if (up / name).is_file():
+                print(f'- parent: {up / name}  ← inherited rules (e.g. "plan mode first")')
     if (root / "docs/README.md").is_file():
         print("- docs/README.md (index)")
     adr = root / "docs/adr"

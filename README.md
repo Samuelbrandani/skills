@@ -12,14 +12,36 @@ Agent skills by [Samuel Brandani](https://github.com/Samuelbrandani), published 
 # one skill, globally (user level), for every agent the CLI knows
 npx skills add Samuelbrandani/skills --skill figma-flutter -g
 
-# or project level, Claude Code only
+# Claude Code only (project level)
 npx skills add Samuelbrandani/skills --skill figma-flutter -a claude-code
+
+# Codex CLI / IDE / app (lands in ~/.agents/skills; invoke with $figma-flutter)
+npx skills add Samuelbrandani/skills --skill figma-flutter -a codex -g
 
 # list what the repo offers without installing
 npx skills add Samuelbrandani/skills --list
 ```
 
-Works with Claude Code, Cursor, Codex, Gemini CLI, and any agent that reads `SKILL.md`. Skills are symlinked into the agent's skills directory by default; pass `--copy` to copy instead.
+Works with Claude Code, Codex, Cursor, Gemini CLI, and any agent that reads `SKILL.md`. Skills are symlinked into the agent's skills directory by default; pass `--copy` to copy instead. Harness differences (how each agent authorizes the Figma MCP, names its tools, handles big results, asks questions, plans) are covered in [`references/agents.md`](skills/figma-flutter/references/agents.md).
+
+### Codex: connect the Figma MCP
+
+In `~/.codex/config.toml`:
+
+```toml
+[features]
+rmcp_client = true
+
+[mcp_servers.figma]
+url = "https://mcp.figma.com/mcp"
+auth = "oauth"                      # then: codex mcp login figma
+# or: bearer_token_env_var = "FIGMA_OAUTH_TOKEN"
+# optional, for big sections:
+# [mcp_servers.figma.tools.get_metadata]
+# output_token_limit = 60000
+```
+
+In the Codex app, Plugins → Figma → Install does the same with a click. Restart the session after connecting, then `$figma-flutter <figma link> implement this screen`.
 
 ## figma-flutter in one minute
 
@@ -48,7 +70,8 @@ Everything in `scripts/` is **read-only and dependency-free** (bash + coreutils,
 |---|---|---|
 | OS | macOS, Linux, Windows | all scripts are Python 3.8+ standard library; on Windows use `py -3 scripts\repo_scan.py` or `.\scripts\repo_scan.ps1` |
 | Flutter (probe) | ≥ 3.10 (Dart 3) | `Color.value` is used instead of `toARGB32()` (3.27+); `Flex.spacing` (3.27+) is read reflectively and omitted from the JSON on older SDKs. Validated on 3.22, 3.35 and 3.47 |
-| Figma | official Figma MCP server (remote or desktop) | `get_design_context` requires the `figma-design-to-code` skill resource loaded first; the skill does this |
+| Figma | official Figma MCP server (remote or desktop) | `get_design_context` asks for the `figma-design-to-code` skill resource; Claude Code reads it, Codex proceeds without (logging-only parameter) |
+| Agents | Claude Code, Codex, Cursor, Gemini CLI, any Agent Skills host | per-agent mechanics in `references/agents.md`; Codex metadata in `agents/openai.yaml` |
 
 ## Requirements
 
@@ -75,5 +98,7 @@ Skills de agente publicadas no [skills.sh](https://skills.sh). Cada skill fica e
 ```bash
 npx skills add Samuelbrandani/skills --skill figma-flutter -g
 ```
+
+No Codex: `npx skills add Samuelbrandani/skills --skill figma-flutter -a codex -g`, conecte o MCP do Figma no `~/.codex/config.toml` (trecho acima) e chame com `$figma-flutter`. As diferenças entre agentes estão em [`references/pt-BR/agents.md`](skills/figma-flutter/references/pt-BR/agents.md).
 
 O método completo está em [`SKILL.md`](skills/figma-flutter/SKILL.md) (inglês, o arquivo que o agente carrega) e no espelho [`SKILL.pt-BR.md`](skills/figma-flutter/SKILL.pt-BR.md). Os scripts em `scripts/` são somente leitura, rodam em macOS, Linux e Windows, e não têm dependência além do Python 3 padrão. O `design_probe.dart` compila em Flutter 3.10 ou mais novo.

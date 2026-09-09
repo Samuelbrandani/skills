@@ -1,12 +1,14 @@
 # Repo profile — design system and architecture
 
-The skill does not carry an architecture of its own. It discovers the repo's and obeys it. This file turns the output of `scripts/repo_scan.sh` into decisions.
+The skill does not carry an architecture of its own. It discovers the repo's and obeys it. This file turns the output of `scripts/repo_scan.py` into decisions.
 
 ## 1. Run the scan
 
 ```
-scripts/repo_scan.sh <repo-root> [feature]   # read-only, ~5–15 s; the feature name spotlights its package, docs and tests
+python3 scripts/repo_scan.py <repo-root> [feature]   # read-only, < 2 s on a 20-package monorepo; standard library only
 ```
+
+Windows: `py -3 scripts\repo_scan.py …` or `.\scripts\repo_scan.ps1 …`. macOS/Linux shells can also call `scripts/repo_scan.sh …`, a wrapper around the same Python file. The `feature` argument spotlights that feature's package, docs and tests.
 
 It prints: toolchain (fvm, melos/workspace), architecture docs, every package with a design-system / feature / catalog tag, barrels, `ThemeExtension` classes, token-like classes, `BuildContext` extensions, styling and codegen packages, fonts, asset dirs and scale folders, icon families used in code, the top-level layout under each `lib/`, and the verification tooling that already exists (probe, goldens, font loader, widgetbook, entrypoints, fake-data flags).
 

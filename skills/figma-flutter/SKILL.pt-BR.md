@@ -36,7 +36,8 @@ Ler o Figma é também onde se decide o que **não** é UI: conectores de protó
 O que já existe vence o que seria criado. Antes de mapear qualquer coisa, rode:
 
 ```
-scripts/repo_scan.sh <raiz-do-repo>
+python3 scripts/repo_scan.py <raiz-do-repo> [feature]     # macOS / Linux (ou scripts/repo_scan.sh)
+py -3 scripts\repo_scan.py <raiz-do-repo> [feature]       # Windows (ou scripts\repo_scan.ps1)
 ```
 
 e leia `references/pt-BR/repo-scan.md` para transformar a saída em um **Perfil do Repo**: onde vive o design system (pacote, barrel, classes de token, padrão de acesso), se ele está *pronto*, *parcial* ou *ausente*, onde ficam widgets de feature versus widgets compartilhados, como estado, DI, navegação e entities estão ligados, as convenções de assets, e qual ferramental de verificação já existe. Leia o `CLAUDE.md` e os docs de arquitetura que a varredura listar.
@@ -88,7 +89,7 @@ Siga a arquitetura do repo, não a desta skill. O que esta skill acrescenta:
 
 Duas conferências, ambas obrigatórias, porque pegam defeitos diferentes:
 
-- **Medir** — despejar a árvore renderizada em JSON (rect, padding, raio, borda, sombra, gradiente, cor, família/tamanho/peso/altura/letter-spacing da fonte, glifo do ícone, asset da imagem, alvos de toque) e comparar número contra número com o Figma. Pega 2 px, peso 600 vs 700, sombra ausente. Use o probe do repo se houver; senão copie `assets/design_probe.dart`.
+- **Medir** — despejar a árvore renderizada em JSON (rect, padding, raio, borda, sombra, gradiente, cor, família/tamanho/peso/altura/letter-spacing da fonte, glifo do ícone, asset da imagem, alvos de toque) e comparar número contra número com o Figma. Pega 2 px, peso 600 vs 700, sombra ausente. Use o probe do repo se houver; senão copie `assets/design_probe.dart` (compila em Flutter ≥ 3.10).
 - **Olhar** — render real com as fontes do app na largura do frame do Figma, ao lado do `get_screenshot`. Pega ordem trocada, elemento faltando, hierarquia invertida, ícone errado.
 
 Cada um dos 12 eixos sai `OK` ou `DIVERGE` com o valor dos dois lados. Loop até zerar. Divergência que não é bug vira linha justificada; nunca some em silêncio.

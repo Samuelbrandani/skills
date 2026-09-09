@@ -37,18 +37,24 @@ Everything in `scripts/` is **read-only and dependency-free** (bash + coreutils,
 
 | File | Purpose |
 |---|---|
-| `scripts/repo_scan.sh <root> [feature]` | Prints a Repo Profile: packages, barrels, `ThemeExtension`s, token classes, icon families, asset dirs, feature layout, probe/golden/widgetbook tooling, architecture docs (including a parent `CLAUDE.md`). |
+| `scripts/repo_scan.py <root> [feature]` | Prints a Repo Profile: packages, barrels, `ThemeExtension`s, token classes, icon families, asset dirs, feature layout, probe/golden/widgetbook tooling, architecture docs (including a parent `CLAUDE.md`). Under 2 s on a 20-package monorepo. `repo_scan.sh` (bash) and `repo_scan.ps1` (PowerShell) are thin wrappers around it. |
 | `scripts/figma_outline.py <saved-metadata> [--node ID] [--depth N]` | Outlines an overflowing `get_metadata` result (a section with many frames) into screens and sizes without loading the XML into context. |
 | `scripts/svg_check.py --dir <folder>` | Flags SVG features `flutter_svg` / `vector_graphics` do not render (filters, CSS `<style>`, `<text>`, embedded images) and export leftovers, before an asset is committed. |
 | `assets/design_probe.dart` | Test helper the agent copies into repos without one: dumps the rendered tree (rect, padding, radius, border, shadow, gradient, fonts, icons, images, tap targets) to JSON, snapshots it, and checks 48 dp tap targets. Requires only `flutter_test`. |
 
-Tested on macOS (bash 3.2/zsh, BSD find/grep) with Flutter 3.35 and 3.47. The shell script uses only POSIX-compatible options and should run on Linux; open an issue if it does not.
+### Platform and version support
+
+| | Supported | Notes |
+|---|---|---|
+| OS | macOS, Linux, Windows | all scripts are Python 3.8+ standard library; on Windows use `py -3 scripts\repo_scan.py` or `.\scripts\repo_scan.ps1` |
+| Flutter (probe) | ≥ 3.10 (Dart 3) | `Color.value` is used instead of `toARGB32()` (3.27+); `Flex.spacing` (3.27+) is read reflectively and omitted from the JSON on older SDKs. Validated on 3.22, 3.35 and 3.47 |
+| Figma | official Figma MCP server (remote or desktop) | `get_design_context` requires the `figma-design-to-code` skill resource loaded first; the skill does this |
 
 ## Requirements
 
 - The official **Figma MCP server** connected to your agent (`whoami` must succeed). A Dev or Full seat on a paid plan avoids the 6-calls-per-month limit of Starter seats.
 - A Flutter repo; the skill adapts to any architecture it can detect (monorepo or single package, any state-management library).
-- `python3` and `bash` on the machine running the agent.
+- `python3` (3.8+) on the machine running the agent. Bash or PowerShell are optional conveniences.
 
 ## Contributing
 
@@ -70,4 +76,4 @@ Skills de agente publicadas no [skills.sh](https://skills.sh). Cada skill fica e
 npx skills add Samuelbrandani/skills --skill figma-flutter -g
 ```
 
-O método completo está em [`SKILL.md`](skills/figma-flutter/SKILL.md) (inglês, o arquivo que o agente carrega) e no espelho [`SKILL.pt-BR.md`](skills/figma-flutter/SKILL.pt-BR.md). Os scripts em `scripts/` são somente leitura e não têm dependências além de bash e python3.
+O método completo está em [`SKILL.md`](skills/figma-flutter/SKILL.md) (inglês, o arquivo que o agente carrega) e no espelho [`SKILL.pt-BR.md`](skills/figma-flutter/SKILL.pt-BR.md). Os scripts em `scripts/` são somente leitura, rodam em macOS, Linux e Windows, e não têm dependência além do Python 3 padrão. O `design_probe.dart` compila em Flutter 3.10 ou mais novo.

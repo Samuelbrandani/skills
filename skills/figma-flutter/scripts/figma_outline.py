@@ -24,6 +24,15 @@ NOISE = {"Container", "Container:margin", "Text", "Text:margin", "Icon",
 TAG = re.compile(r'<(\w+) id="([^"]+)" name="([^"]*)"(.*?)(/?)>')
 
 
+def _utf8_stdout() -> None:
+    """Windows consoles and pipes may default to cp1252; the report uses arrows
+    and multiplication signs, so force UTF-8 (Python 3.7+) and never crash on it."""
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
+    except (AttributeError, ValueError):
+        pass
+
+
 def load(path: Path) -> str:
     raw = path.read_text(encoding="utf-8", errors="replace")
     if raw.lstrip().startswith("["):
@@ -41,6 +50,7 @@ def attr(rest: str, name: str):
 
 
 def main(argv):
+    _utf8_stdout()
     if not argv:
         print(__doc__)
         return 2

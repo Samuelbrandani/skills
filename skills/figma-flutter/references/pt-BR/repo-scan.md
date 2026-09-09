@@ -1,12 +1,14 @@
 # Perfil do repo — design system e arquitetura
 
-A skill não carrega arquitetura própria. Ela descobre a do repo e obedece. Este arquivo transforma a saída de `scripts/repo_scan.sh` em decisões.
+A skill não carrega arquitetura própria. Ela descobre a do repo e obedece. Este arquivo transforma a saída de `scripts/repo_scan.py` em decisões.
 
 ## 1. Rode a varredura
 
 ```
-scripts/repo_scan.sh <raiz-do-repo> [feature]   # só leitura, ~5–15 s; o nome da feature destaca pacote, docs e testes dela
+python3 scripts/repo_scan.py <raiz-do-repo> [feature]   # só leitura, < 2 s num monorepo de 20 pacotes; só biblioteca padrão
 ```
+
+Windows: `py -3 scripts\repo_scan.py …` ou `.\scripts\repo_scan.ps1 …`. Em macOS/Linux também dá para chamar `scripts/repo_scan.sh …`, um wrapper do mesmo arquivo Python. O argumento `feature` destaca pacote, docs e testes daquela feature.
 
 Ela imprime: toolchain (fvm, melos/workspace), docs de arquitetura, todo pacote com tag de design system / feature / catálogo, barrels, classes `ThemeExtension`, classes com cara de token, extensions de `BuildContext`, pacotes de estilo e codegen, fontes, pastas de assets e de escala, famílias de ícone usadas no código, o layout de primeiro nível sob cada `lib/`, e o ferramental de verificação que já existe (probe, goldens, carregador de fontes, widgetbook, entrypoints, flags de fake).
 

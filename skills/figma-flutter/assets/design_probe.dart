@@ -20,6 +20,14 @@
 // Why: image goldens run with the Ahem test font and no shadows, so they cannot
 // see the exact defects that make a screen diverge from Figma. This probe
 // compares number against number instead.
+//
+// Compatibility: Flutter >= 3.10 (Dart 3). It avoids APIs added later so the
+// same file compiles on old and new SDKs:
+//   - colors are serialized through `Color.value` (deprecated since 3.27 but
+//     still present) instead of `toARGB32()` (3.27+);
+//   - `Flex.spacing` (3.27+) is read reflectively and omitted on older SDKs;
+//   - `BorderSide.strokeAlign` needs 3.7+ (already below the floor).
+// If your repo pins `fatal-warnings`, keep the `// ignore:` comments below.
 
 import 'dart:convert';
 import 'dart:io';
@@ -162,7 +170,7 @@ Map<String, Object?>? _style(Widget widget, Element element) {
   if (widget is Flex) {
     return <String, Object?>{
       'direction': widget.direction.name,
-      'spacing': widget.spacing,
+      if (_flexSpacing(widget) case final double spacing) 'spacing': spacing,
       'mainAxisAlignment': widget.mainAxisAlignment.name,
       'crossAxisAlignment': widget.crossAxisAlignment.name,
       'mainAxisSize': widget.mainAxisSize.name,
@@ -195,6 +203,18 @@ Map<String, Object?>? _style(Widget widget, Element element) {
     return <String, Object?>{};
   }
   return null;
+}
+
+/// `Flex.spacing` exists only on Flutter >= 3.27. Reading it dynamically keeps
+/// this file compiling on older SDKs; there the key is simply absent.
+double? _flexSpacing(Flex widget) {
+  try {
+    // ignore: avoid_dynamic_calls
+    final value = (widget as dynamic).spacing;
+    return value is double ? value : null;
+  } on NoSuchMethodError {
+    return null;
+  }
 }
 
 bool _isTapTarget(Widget widget) {
@@ -381,7 +401,9 @@ Map<String, Object?> _edges(EdgeInsetsGeometry padding) {
 
 String? _color(Color? color) {
   if (color == null) return null;
-  final value = color.toARGB32();
+  // `toARGB32()` only exists on Flutter >= 3.27; `value` works everywhere.
+  // ignore: deprecated_member_use
+  final value = color.value;
   return '#${value.toRadixString(16).padLeft(8, '0').toUpperCase()}';
 }
 

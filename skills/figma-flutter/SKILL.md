@@ -7,7 +7,7 @@ metadata:
   version: "1.0.0"
   source: https://github.com/Samuelbrandani/skills
   languages: "en, pt-BR"
-  requires: "Figma MCP server (official), Flutter SDK, bash, python3 (stdlib only)"
+  requires: "Figma MCP server (official), Flutter SDK >= 3.10, python3 >= 3.8 (stdlib only; bash/PowerShell wrappers optional)"
 ---
 
 # Figma → Flutter
@@ -48,7 +48,8 @@ Reading Figma is also where you decide what is **not** UI: prototype connectors,
 What already exists wins over what would be created. Before mapping anything, run:
 
 ```
-scripts/repo_scan.sh <repo-root>
+python3 scripts/repo_scan.py <repo-root> [feature]     # macOS / Linux (or scripts/repo_scan.sh)
+py -3 scripts\repo_scan.py <repo-root> [feature]       # Windows (or scripts\repo_scan.ps1)
 ```
 
 and read `references/repo-scan.md` to turn the output into a **Repo Profile**: where the design system lives (package, barrel, token classes, access pattern), whether the design system is *ready*, *partial*, or *absent*, where feature widgets go versus shared widgets, how state, DI, navigation, and entities are wired, the asset conventions, and which verification tooling already exists. Read the `CLAUDE.md` and architecture docs the scan lists.
@@ -100,7 +101,7 @@ Follow the repo's architecture, not this skill's. What this skill adds:
 
 Two checks, both mandatory, because they catch different defects:
 
-- **Measure** — dump the rendered tree to JSON (rect, padding, radius, border, shadow, gradient, color, font family/size/weight/height/letter-spacing, icon glyph, image asset, tap targets) and compare number against number with the Figma. Catches 2 px, weight 600 vs 700, a missing shadow. Use the repo's probe if it has one; otherwise copy `assets/design_probe.dart` in.
+- **Measure** — dump the rendered tree to JSON (rect, padding, radius, border, shadow, gradient, color, font family/size/weight/height/letter-spacing, icon glyph, image asset, tap targets) and compare number against number with the Figma. Catches 2 px, weight 600 vs 700, a missing shadow. Use the repo's probe if it has one; otherwise copy `assets/design_probe.dart` in (compiles on Flutter ≥ 3.10).
 - **Look** — real render with the app's fonts at the Figma frame width, next to `get_screenshot`. Catches swapped order, missing element, inverted hierarchy, wrong icon.
 
 Each of the 12 axes comes out `OK` or `DIVERGE` with the value on both sides. Loop until clear. A divergence that is not a bug becomes a justified line; it never disappears in silence.

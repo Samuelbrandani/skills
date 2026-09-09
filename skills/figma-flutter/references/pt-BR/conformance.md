@@ -16,7 +16,7 @@ Isso pega o que o olho não pega: 2 px de padding, peso 600 onde o Figma pede 70
 
 **Se o repo tem probe** (a varredura lista `probeDesign` / `expectDesignSnapshot` ou similar), use exatamente como os testes vizinhos usam.
 
-**Se não tem**, copie `assets/design_probe.dart` desta skill para o repo (`test/support/design_probe.dart` em pacote único, ou `lib/testing/design_probe.dart` do pacote do design system com um barrel `testing.dart` em monorepo). Não depende de nada além de `flutter_test`. Então:
+**Se não tem**, copie `assets/design_probe.dart` desta skill para o repo (`test/support/design_probe.dart` em pacote único, ou `lib/testing/design_probe.dart` do pacote do design system com um barrel `testing.dart` em monorepo). Não depende de nada além de `flutter_test` e compila em Flutter ≥ 3.10 (Dart 3): cores passam por `Color.value` com ignore de deprecação, e `Flex.spacing` (3.27+) é lido por reflexão e simplesmente não aparece no JSON em SDKs antigos. Então:
 
 ```dart
 import 'support/design_probe.dart';

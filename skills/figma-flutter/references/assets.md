@@ -79,10 +79,12 @@ Then register:
 
 1. `pubspec.yaml` → `flutter: assets:` with the **directory** (`assets/images/`) so the scale folders resolve automatically. Listing a file does not pick up its `2.0x` sibling.
 2. If the repo uses `flutter_gen` (`Assets.icons.arrowRight`), run the generator (`dart run build_runner build -d`) and use the generated accessor.
-3. If the repo has an icon class (`AppIcons.arrowRight` → `SvgPicture.asset`), add the entry there with the same naming as its siblings; feature code never calls `SvgPicture.asset('assets/…')` directly when such a class exists.
+3. If the repo has an icon class (`AppIcons.arrowRight` → its image component or `SvgPicture.asset`), add the entry there with the same naming as its siblings; feature code never calls `SvgPicture.asset('assets/…')` directly when such a class exists.
 4. For a package asset used by another package: `AssetImage('assets/x.png', package: 'acme_design_system')`, and the asset must be declared in **that** package's pubspec.
 
 ## 5. Render and verify
+
+**The repo's image component comes first.** When the Repo Profile names one (section *Image / icon rendering component*: a widget wrapping `Image.*`/`SvgPicture.*` used across the codebase, often guarded by a lint such as `no_raw_image`), every asset goes through it with the same size, fit, and tint arguments — it usually carries caching, decode-at-display-size, web/CORS handling, and error fallbacks that a raw call skips. The two lines below are the fallback for repos with no such component, or what the component itself does inside.
 
 - Icon: `SvgPicture.asset(path, width: 24, height: 24, colorFilter: ColorFilter.mode(color, BlendMode.srcIn))`. Size comes from the Figma frame; color from a token.
 - Raster: `Image.asset(path, width, height, fit)`. Never a bare `Image.asset` without size when the Figma fixes one; the intrinsic size of the 3× file is three times the intended size.

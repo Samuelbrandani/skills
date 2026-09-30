@@ -16,9 +16,9 @@ Um **component set** do Figma vira um widget com um enum por eixo de variante; *
 
 | Nó | Nome no Figma | Decisão | Widget | Justificativa |
 |---|---|---|---|---|
-| `7880:10562` | Card de período | reuso | `AcmeDateRangeCard` | — |
-| `7880:10570` | Chip de filtro | extensão | `AcmeFilterChip` + contagem | Figma mostra `Região · 2` |
-| `7880:10588` | Faixa de status | novo | `AcmeStatusStrip` | ponto + rótulo + badge, sem equivalente |
+| `1234:1100` | Card de período | reuso | `AcmeDateRangeCard` | — |
+| `1234:1120` | Chip de filtro | extensão | `AcmeFilterChip` + contagem | Figma mostra `Região · 2` |
+| `1234:1140` | Faixa de status | novo | `AcmeStatusStrip` | ponto + rótulo + badge, sem equivalente |
 
 ## Tabela 2 — variável do Figma → token
 
@@ -26,8 +26,8 @@ Uma linha por variável retornada pelo `get_variable_defs`.
 
 | Variável Figma | Valor | Token Flutter | Nota |
 |---|---|---|---|
-| `color/semantic/primary` | `#D01165` | `context.acme.colors.primary` | — |
-| `typography/card-title` | Titillium 700 16/24 | `context.acme.typography.cardTitle` | — |
+| `color/semantic/primary` | `#3B5BDB` | `context.acme.colors.primary` | — |
+| `typography/card-title` | Inter 700 16/24 | `context.acme.typography.cardTitle` | — |
 | `spacing/md` | 16 | `AcmeSpacing.md` | — |
 
 Regras:
@@ -45,7 +45,7 @@ A tabela mais importante. Toda medida do Figma que **não** casa com um token ex
 |---|---|---|
 | sombra `0 2 8 rgba(0,0,0,.08)` | card | **vira token** — não existe token de sombra hoje |
 | raio 12 | chip | **decisão registrada**: usa `radii.sm` (16); Figma será alinhado |
-| `#ED1E79` | botão | **decisão registrada**: `primary` do produto é `#D01165`; Figma diverge |
+| `#4C6EF5` | botão | **decisão registrada**: `primary` do produto é `#3B5BDB`; Figma diverge |
 
 Nenhum valor sai desta tabela por omissão. Ou vira token, ou vira decisão escrita.
 

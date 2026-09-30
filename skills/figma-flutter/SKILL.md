@@ -4,7 +4,7 @@ description: Implements or audits a Flutter screen or component from a Figma nod
 license: MIT
 metadata:
   author: Samuel Brandani
-  version: "1.0.0"
+  version: "1.1.0"
   source: https://github.com/Samuelbrandani/skills
   languages: "en, pt-BR"
   requires: "Figma MCP server (official), Flutter SDK >= 3.10, python3 >= 3.8 (stdlib only; bash/PowerShell wrappers optional)"
@@ -33,7 +33,7 @@ If the request does not say which: screen exists in code + request is a question
 ## Phase 0 — Preflight (blocking)
 
 1. `whoami` on the Figma MCP. If it is missing or fails, the server is not connected or not authorized: get it authorized the way your agent does it (Claude Code: `authenticate` and hand the user the URL; Codex: `codex mcp login figma` or the `FIGMA_OAUTH_TOKEN` variable — see `references/agents.md`) and **do not fall back** to prose, an old screenshot, or memory. While the user authorizes, run phase 2 (repo profile) — it does not depend on Figma. In Claude Code the real tools appear as deferred tools after authorization; load them with `ToolSearch("select:mcp__figma__whoami,mcp__figma__get_metadata,…")` before calling.
-2. Parse the link: `figma.com/design/<fileKey>/...?node-id=7880-15366` → `fileKey`, `nodeId = 7880:15366` (hyphen becomes colon).
+2. Parse the link: `figma.com/design/<fileKey>/...?node-id=1234-5678` → `fileKey`, `nodeId = 1234:5678` (hyphen becomes colon).
 3. `get_metadata` on the node. On a section or page it **overflows the tool-result limit**. Claude Code saves the result to a file: do not call it again, run `scripts/figma_outline.py <saved-file> --depth 1` to list the screens and their sizes, and `--node <id> --depth 3` to outline one screen. Agents that truncate instead (Codex) should call `get_metadata` per screen frame from the start. Write down the **frame width** of every screen. Every check in phase 7 happens at that width; comparing a 490 px render with a 390 px frame invents divergence that does not exist.
 4. Budget the calls. The MCP truncates around 20 KB per response, and Starter/View seats get 6 calls per month (`whoami` shows the seat). One screen costs at least metadata + screenshot + variables + context; plan the batch before calling, and batch independent calls in one message.
 5. If the repo's `CLAUDE.md` / `AGENTS.md` (or a parent's) demands a plan before implementing, phases 0–5 **are the plan**: write them with `references/plan-template.md` and hand the plan over (Claude Code: plan mode; other agents: the plan file plus an explicit "go" in chat); phases 6–7 run after approval, possibly by another agent.
@@ -55,10 +55,11 @@ py -3 scripts\repo_scan.py <repo-root> [feature]       # Windows (or scripts\rep
 
 and read `references/repo-scan.md` to turn the output into a **Repo Profile**: where the design system lives (package, barrel, token classes, access pattern), whether the design system is *ready*, *partial*, or *absent*, where feature widgets go versus shared widgets, how state, DI, navigation, and entities are wired, the asset conventions, and which verification tooling already exists. Read the `CLAUDE.md` and architecture docs the scan lists.
 
-Three rules come out of this phase and are not negotiable:
+Four rules come out of this phase and are not negotiable:
 
 - **Components go where the architecture says.** A reusable component goes into the design-system package with everything its siblings have (test, catalog entry, export in the barrel). A screen section goes into the feature's widget folder. Never a `widgets/` folder invented for the occasion.
 - **Tokens are consumed the way the repo consumes them** (`context.colors.primary`, `AppSpacing.md`, `Theme.of(context).extension<…>()`). If there are two token files, find the one that generates code before editing.
+- **Images and icons render through the repo's image component** when the scan finds one (a widget wrapping `Image.*`/`SvgPicture.*` that most files use, often enforced by a custom lint). Raw `Image.asset`/`SvgPicture.asset` is the fallback only in repos that have no such component.
 - **Catalog docs are a hint, not the truth.** Reconcile any written catalog against the barrel and fix the doc in the same pass.
 
 ## Decision batch (ask once, early)
@@ -66,7 +67,7 @@ Three rules come out of this phase and are not negotiable:
 Some decisions are the user's, and asking them one at a time mid-flight stalls the work. As soon as phases 1 and 2 are done, ask them together — one `AskUserQuestion` in Claude Code, one numbered list in chat elsewhere — with a recommended option first:
 
 - **Scope** when the node has several frames: which screens or bodies enter this round.
-- **Brand color vs accessibility token** when the Figma uses a hex that the design system deliberately replaced (e.g. brand pink vs its AA variant).
+- **Brand color vs accessibility token** when the Figma uses a hex that the design system deliberately replaced (e.g. a brand blue vs its darker AA variant).
 - **Data without a source**: how a stat, count, or toggle the Figma draws but no entity provides degrades (hide the cell, hide the block, placeholder). Check the spec's open questions or blockers first; the answer is often already written.
 - **Undrawn states** the screen needs (save button in an inline form, empty/incomplete header, a section body the Figma does not show).
 

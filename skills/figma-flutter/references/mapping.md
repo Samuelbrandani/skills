@@ -16,9 +16,9 @@ A Figma **component set** maps to one widget with one enum per variant axis; **b
 
 | Node | Figma name | Decision | Widget | Justification |
 |---|---|---|---|---|
-| `7880:10562` | Period card | reuse | `AcmeDateRangeCard` | — |
-| `7880:10570` | Filter chip | extend | `AcmeFilterChip` + count | Figma shows `Region · 2` |
-| `7880:10588` | Status strip | new | `AcmeStatusStrip` | dot + label + badge, no equivalent |
+| `1234:1100` | Period card | reuse | `AcmeDateRangeCard` | — |
+| `1234:1120` | Filter chip | extend | `AcmeFilterChip` + count | Figma shows `Region · 2` |
+| `1234:1140` | Status strip | new | `AcmeStatusStrip` | dot + label + badge, no equivalent |
 
 ## Table 2 — Figma variable → token
 
@@ -26,8 +26,8 @@ One line per variable returned by `get_variable_defs`.
 
 | Figma variable | Value | Flutter token | Note |
 |---|---|---|---|
-| `color/semantic/primary` | `#D01165` | `context.acme.colors.primary` | — |
-| `typography/card-title` | Titillium 700 16/24 | `context.acme.typography.cardTitle` | — |
+| `color/semantic/primary` | `#3B5BDB` | `context.acme.colors.primary` | — |
+| `typography/card-title` | Inter 700 16/24 | `context.acme.typography.cardTitle` | — |
 | `spacing/md` | 16 | `AcmeSpacing.md` | — |
 
 Rules:
@@ -45,7 +45,7 @@ The most important table. Every Figma measurement that does **not** match an exi
 |---|---|---|
 | shadow `0 2 8 rgba(0,0,0,.08)` | card | **becomes a token** — no shadow token today |
 | radius 12 | chip | **recorded decision**: uses `radii.sm` (16); Figma will be aligned |
-| `#ED1E79` | button | **recorded decision**: product `primary` is `#D01165`; Figma diverges |
+| `#4C6EF5` | button | **recorded decision**: product `primary` is `#3B5BDB`; Figma diverges |
 
 No value leaves this table by omission. It becomes a token or a written decision.
 

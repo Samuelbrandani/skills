@@ -59,10 +59,10 @@ Everything in `scripts/` is **read-only and dependency-free** (bash + coreutils,
 
 | File | Purpose |
 |---|---|
-| `scripts/repo_scan.py <root> [feature]` | Prints a Repo Profile: packages, barrels, `ThemeExtension`s, token classes, icon families, asset dirs, feature layout, probe/golden/widgetbook tooling, architecture docs (including a parent `CLAUDE.md`). Under 2 s on a 20-package monorepo. `repo_scan.sh` (bash) and `repo_scan.ps1` (PowerShell) are thin wrappers around it. |
+| `scripts/repo_scan.py <root> [feature]` | Prints a Repo Profile: packages, barrels, `ThemeExtension`s, token classes with their files, design-system folders, custom lint rules, the image/icon rendering component, fonts (including bundled `google_fonts`), icon families, asset dirs, feature layout, probe/golden/widgetbook tooling, architecture docs (including a parent `CLAUDE.md`), and conflicting fvm pins. Under 2 s on a 20-package monorepo. `repo_scan.sh` (bash) and `repo_scan.ps1` (PowerShell) are thin wrappers around it. |
 | `scripts/figma_outline.py <saved-metadata> [--node ID] [--depth N]` | Outlines an overflowing `get_metadata` result (a section with many frames) into screens and sizes without loading the XML into context. |
 | `scripts/svg_check.py --dir <folder>` | Flags SVG features `flutter_svg` / `vector_graphics` do not render (filters, CSS `<style>`, `<text>`, embedded images) and export leftovers, before an asset is committed. |
-| `assets/design_probe.dart` | Test helper the agent copies into repos without one: dumps the rendered tree (rect, padding, radius, border, shadow, gradient, fonts, icons, images, tap targets) to JSON, snapshots it, and checks 48 dp tap targets. Requires only `flutter_test`. |
+| `assets/design_probe.dart` | Test helper the agent copies into repos without one: dumps the rendered tree (rect, padding, radius, border, shadow, gradient, fonts and per-span styles, icons resolved from `IconTheme`, images and SVGs, tap targets, Flex overflow, clipped text) to JSON, snapshots it, checks 48 dp tap targets and overflow at 1.3× text scale, and loads bundled `google_fonts` so text is not measured with Ahem. Requires only `flutter_test`. |
 
 ### Platform and version support
 

@@ -11,7 +11,7 @@ Usage:
   scripts/figma_outline.py <saved-result-file> [--depth N] [--node ID] [--all]
 
   --depth N   levels to print below the root (default 2 = top-level screens)
-  --node ID   start from this node id (e.g. 8055:736) instead of the root
+  --node ID   start from this node id (e.g. 12:345) instead of the root
   --all       also print layers named Container/Text/Icon/Paragraph (noise)
 """
 import json

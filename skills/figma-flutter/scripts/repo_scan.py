@@ -27,6 +27,16 @@ TOKEN_CLASS = re.compile(
     r'Typography|TextStyles|Text(?:Theme|Styles)|Radi(?:us|i)|Shadows?|Elevations?|Icons|Tokens|'
     r'Gaps?|Dimens|Insets))\b')
 CONTEXT_EXT = re.compile(r'extension [A-Za-z]+ on BuildContext')
+CONTEXT_EXT_BODY = re.compile(r'(extension [A-Za-z]+ on BuildContext)\s*\{(.{0,1500}?)\n\}', re.S)
+TOKEN_WORDS = re.compile(r'\b(?:[A-Z]\w*(?:Colors?|Spacing|Typography|TextStyles|Radi(?:us|i)|Shadows|Tokens)|'
+                         r'ThemeExtension|extension<|colorScheme|textTheme)\b')
+DS_DIR_NAMES = ("design", "design_system", "ds", "theme", "ui_kit", "tokens", "foundation")
+LINT_RULE = re.compile(r'extends\s+(?:DartLintRule|LintRule|AnalysisRule|MultiAnalysisRule|LintCode)\b')
+IMAGE_WRAPPER = re.compile(r'class\s+([A-Z]\w*?(?:Image|Picture|Svg|Icon|Avatar|Illustration)\w*|'
+                           r'(?:Image|Picture|Svg|Illustration)\w*)\s+extends\s+'
+                           r'(?:StatelessWidget|StatefulWidget)')
+RAW_IMAGE = re.compile(r'\b(?:Image\.(?:asset|network|file|memory)|SvgPicture\.(?:asset|network|file|memory|string)|'
+                       r'CachedNetworkImage\()')
 ICON_FAMILY = re.compile(
     r'\b(Icons|CupertinoIcons|LucideIcons|PhosphorIcons|FontAwesomeIcons|HeroIcons|[A-Z][A-Za-z]*Icons)\.[a-zA-Z0-9_]+')
 TOOLING = re.compile(
@@ -104,12 +114,17 @@ def main(argv: list[str]) -> int:
     print(f"# Repo Profile — {root.name} ({root})")
 
     h("Toolchain")
+    fvm: dict[str, str] = {}
     for name in (".fvmrc", ".fvm/fvm_config.json"):
         p = root / name
         if p.is_file():
             m = re.search(r'"(?:flutter|flutterSdkVersion)"\s*:\s*"([^"]+)"', read(p))
             if m:
-                print(f"- fvm: {m.group(1)}")
+                fvm[name] = m.group(1)
+                print(f"- fvm: {m.group(1)} ({name})")
+    if len(set(fvm.values())) > 1:
+        print(f"  ⚠ fvm pins disagree — fvm 3 reads .fvmrc ({fvm.get('.fvmrc')}); "
+              ".fvm/fvm_config.json is a legacy/local file. Run tools with the .fvmrc version")
     if (root / "melos.yaml").is_file():
         print("- melos.yaml present (monorepo)")
     if re.search(r"^workspace:", read(root / "pubspec.yaml"), re.M):
@@ -179,22 +194,104 @@ def main(argv: list[str]) -> int:
         if "extends ThemeExtension<" in src:
             print(f"    {rel(p, root)}")
     print("- token-like classes (Colors/Spacing/Typography/Radius/Shadows/Elevation/Icons):")
-    counter = Counter(m for src in dart_src.values() for m in TOKEN_CLASS.findall(src))
-    for name, n in counter.most_common(25):
-        print(f"    {name} ({n})")
+    token_at: dict[str, list[str]] = {}
+    for p, src in sorted(dart_src.items()):
+        if "test" in p.relative_to(root).parts:
+            continue
+        for name in TOKEN_CLASS.findall(src):
+            token_at.setdefault(name, []).append(rel(p, root))
+    for name, paths in sorted(token_at.items(), key=lambda kv: (-len(kv[1]), kv[0]))[:25]:
+        extra = f" (+{len(paths) - 1} more)" if len(paths) > 1 else ""
+        print(f"    {name} — {paths[0]}{extra}")
+    print("- design-system dirs inside lib/ (not a package):")
+    ds_dirs = [rel(p, root) for n in DS_DIR_NAMES for p in dirs_named.get(n, [])
+               if "lib" in p.relative_to(root).parts and "test" not in p.relative_to(root).parts]
+    for d in sorted(ds_dirs)[:8]:
+        print(f"    {d}")
     print("- BuildContext extensions (context.colors / context.spacing …):")
-    for ext in sorted({m for src in dart_src.values() for m in CONTEXT_EXT.findall(src)})[:8]:
-        print(f"    {ext}")
+    token_ext, other_ext = [], []
+    for p, src in sorted(dart_src.items()):
+        for m in CONTEXT_EXT_BODY.finditer(src):
+            body = m.group(2)
+            line = f"{m.group(1)} — {rel(p, root)}"
+            (token_ext if TOKEN_WORDS.search(body) else other_ext).append(line)
+    for line in token_ext[:8]:
+        print(f"    {line}  ← token access")
+    if not token_ext:
+        print("    (none exposes tokens — access is probably static: AppColors.x / Theme.of(context))")
+    if other_ext:
+        print(f"    + {len(other_ext)} other extensions (helpers: sheets, toasts, navigation …)")
     print("- token codegen / theme tooling:")
     tools = Counter(m for src in pub_src.values() for m in TOOLING.findall(src))
     for name, n in tools.most_common():
         print(f"    {name} (×{n})")
     fonts = sorted({m.strip() for src in pub_src.values() for m in FONT_FAMILY.findall(src)})
-    print(f"- fonts declared in pubspec:\n    {' '.join(fonts)}")
+    print(f"- fonts declared in pubspec: {' '.join(fonts) or '(none)'}")
+    gf_files = sorted({f"{rel(p, root)}/" for p in dirs_named.get("google_fonts", [])
+                       if "lib" not in p.relative_to(root).parts})
+    for d in gf_files:
+        ttf = sorted(x.name for x in (root / d).iterdir() if x.suffix.lower() in (".ttf", ".otf"))
+        print(f"- google_fonts bundled offline: {d} {' '.join(ttf)[:160]}")
+    uses_gf = any("GoogleFonts." in src for src in dart_src.values())
+    if uses_gf:
+        offline = any(re.search(r"allowRuntimeFetching\s*=\s*false", src) for src in dart_src.values())
+        print(f"- google_fonts used in code; runtime fetching disabled somewhere: {'yes' if offline else 'NO'}"
+              " — tests need the TTFs registered, or text is measured with Ahem")
     print("- design-system catalog docs:")
     for p in sorted(md_files):
         if re.search(r"catalog|components|tokens|design[-_]system", p.name, re.I) and len(p.relative_to(root).parts) <= 5:
             print(f"    {rel(p, root)}")
+
+    h("Lint rules (they encode the design-system contract — read them)")
+    inherited = 0
+    for p in sorted(root.rglob("analysis_options.yaml")):
+        if any(x in PRUNE for x in p.relative_to(root).parts) or len(p.relative_to(root).parts) > 4:
+            continue
+        src = read(p)
+        inc = re.findall(r"^include:\s*(\S+)", src, re.M)
+        plugins = re.findall(r"^\s*plugins:\s*\n((?:\s+-?\s*\S+.*\n?)+)", src, re.M)
+        names = re.findall(r"[\w-]+", " ".join(plugins))
+        if not names and inc and all(i.startswith("..") for i in inc):
+            inherited += 1
+            continue
+        print(f"- {rel(p, root)}: include {' '.join(inc) or '—'}; analyzer plugins {' '.join(names) or '—'}")
+    if inherited:
+        print(f"- + {inherited} package analysis_options that only include a parent")
+    rules = []
+    for p, src in sorted(dart_src.items()):
+        if not LINT_RULE.search(src):
+            continue
+        codes = re.findall(r"""(?:name|code)\s*[:=]\s*['"]([a-z][a-z0-9_]+)['"]""", src)
+        rules += [f"{c} — {rel(p, root)}" for c in dict.fromkeys(codes)]
+    for r in rules[:30]:
+        print(f"    rule: {r}")
+    if not rules:
+        print("    (no custom lint rule classes found)")
+
+    h("Image / icon rendering component (feature code must go through it)")
+    raw_users = Counter()
+    wrappers = []
+    for p, src in sorted(dart_src.items()):
+        if "test" in p.relative_to(root).parts:
+            continue
+        for cls in IMAGE_WRAPPER.findall(src):
+            if RAW_IMAGE.search(src):
+                wrappers.append((cls, rel(p, root)))
+        for m in RAW_IMAGE.findall(src):
+            raw_users[rel(p, root)] += 1
+    used = Counter()
+    for cls, _ in wrappers:
+        pat = re.compile(rf"\b{cls}\b")
+        used[cls] = sum(1 for src in dart_src.values() if pat.search(src))
+    top = sorted(wrappers, key=lambda w: -used[w[0]])[:5]
+    for cls, path in top:
+        print(f"- {cls} — {path} (used in {used[cls]} files)")
+    if top:
+        print("  → render assets through the most-referenced wrapper; raw Image.*/SvgPicture.* "
+              "belongs only inside it")
+    else:
+        print("- none: raw Image.asset / SvgPicture.asset is the repo's pattern")
+    print(f"- files calling raw Image.*/SvgPicture.* directly: {len(raw_users)}")
 
     h("Assets")
     shown = 0

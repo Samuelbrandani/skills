@@ -4,7 +4,7 @@ description: Implements or audits a Flutter screen or component from a Figma nod
 license: MIT
 metadata:
   author: Samuel Brandani
-  version: "1.1.0"
+  version: "1.2.0"
   source: https://github.com/Samuelbrandani/skills
   languages: "en, pt-BR"
   requires: "Figma MCP server (official), Flutter SDK >= 3.10, python3 >= 3.8 (stdlib only; bash/PowerShell wrappers optional)"
@@ -104,9 +104,13 @@ Follow the repo's architecture, not this skill's. What this skill adds:
 Two checks, both mandatory, because they catch different defects:
 
 - **Measure** — dump the rendered tree to JSON (rect, padding, radius, border, shadow, gradient, color, font family/size/weight/height/letter-spacing, icon glyph, image asset, tap targets) and compare number against number with the Figma. Catches 2 px, weight 600 vs 700, a missing shadow. Use the repo's probe if it has one; otherwise copy `assets/design_probe.dart` in (compiles on Flutter ≥ 3.10).
-- **Look** — real render with the app's fonts at the Figma frame width, next to `get_screenshot`. Catches swapped order, missing element, inverted hierarchy, wrong icon.
+- **Look** — real render with the app's fonts at the Figma frame width, next to `get_screenshot`. Catches swapped order, missing element, inverted hierarchy, wrong icon. Run `scripts/png_diff.py <figma.png> <app.png> --width <frame> --out diff.png` first: it lists the horizontal bands where the two diverge, so the eye starts where the problem is.
 
 Each of the 12 axes comes out `OK` or `DIVERGE` with the value on both sides. Loop until clear. A divergence that is not a bug becomes a justified line; it never disappears in silence.
+
+When the design system has a dark theme and the Figma file has a dark mode, both checks run once per mode (`<name>.light.json` / `<name>.dark.json`, one capture each).
+
+**Close the loop with Code Connect.** For every design-system component created or extended in this round, offer to register it in the Figma file (`add_code_connect_map` with `label: "Flutter"`, the component-set node, the widget name and its source path; or `get_code_connect_suggestions` → user confirms → `send_code_connect_mappings` for several). It writes to the shared Figma file, so ask first. The next run reads it back in phase 1 (`get_code_connect_map`) and reuses the widget instead of rebuilding it. Code Connect needs an Organization or Enterprise plan; without it, skip and say so.
 
 ## Deliverable
 
@@ -123,5 +127,6 @@ Do not declare done without:
 - [ ] every asset is the original Figma export, checked by `svg_check.py`, registered, and rendered at the right size
 - [ ] fake data covering the Figma's rich case
 - [ ] rendered tree measured and compared number against number
-- [ ] the 12 axes closed per screen, at the frame width
+- [ ] the 12 axes closed per screen, at the frame width (and per mode when there is a dark theme); `png_diff.py` has no band left unexplained
+- [ ] new or extended design-system components offered for Code Connect (registered, declined, or plan without Code Connect)
 - [ ] static analysis and the tests of every touched package green

@@ -11,6 +11,7 @@
 | 5 | `get_code_connect_map` (`nodeId`) | existing Code Connect mappings for the file. Code Connect has no Dart parser, but teams can register Flutter widgets through the template (parserless) mode. If a mapping exists, it names the widget to reuse. |
 | 6 | `search_design_system` (`queries`) | finds the library component behind an instance. Use when the layer name is generic. |
 | 7 | `download_assets` (`nodeId`, `defaultFormat?`, `defaultScale?`) | one node per call: the node's export, the original raster images used as fills in its subtree (up to 20), and the SVGs of its vector layers (up to 20, the same set `get_design_context` lists). Details in `assets.md`. |
+| 8 | `get_motion_context` (`nodeId`, `recursive?`) | keyframes, durations and easing curves of animated nodes (Smart Animate, component transitions). Call it only when the node or its annotations say something moves. Map durations to the repo's duration tokens and easings to `Curves` / `Cubic(x1, y1, x2, y2)`; ignore the CSS/motion.dev snippets it returns. |
 
 ## Is the node using tokens?
 

@@ -66,7 +66,15 @@ O probe não vê composição: ordem trocada, elemento faltando, hierarquia visu
 
 Redimensionar para a largura do frame não é opcional: os mesmos padding e fonte dentro de uma caixa 25% mais larga produzem uma tela que parece apertada e pequena, e a divergência é do método, não do código. Navegue até o estado exato que o nó do Figma mostra (aba certa, filtro aplicado, item certo) e capture.
 
-Salve a captura ao lado do PNG do Figma, versionados, com nome que amarre `tela ↔ node`. Depois abra os dois no mesmo tamanho e passe pelos eixos abaixo. Sobreponha a 50% de opacidade quando a composição parece próxima mas "algo está errado"; o deslocamento salta aos olhos.
+Salve a captura ao lado do PNG do Figma, versionados, com nome que amarre `tela ↔ node`. Depois compare:
+
+```
+python3 scripts/png_diff.py docs/design/<f>/<tela>_<node>.png docs/design/<f>/<tela>_<node>.app.png --width 390 --out /tmp/<tela>.diff.png
+```
+
+As duas imagens são redimensionadas para a largura do frame (export 2× do Figma e captura 3× do device comparam bem), um pixel só conta quando nada a 1 px de distância do outro lado bate com ele, e o relatório lista as faixas de 16 px onde a divergência se concentra, de cima para baixo. Leia assim: uma faixa perto do topo e render do app mais alto → espaçamento sobrando lá em cima; uma sequência de faixas sob um card → padding ou fonte daquele card; uma faixa na altura de um ícone → desenho ou tamanho errado. Reamostrar a mesma tela fica perto de 1% sem faixa ≥ 5%; exit code 1 quer dizer que alguma faixa passou disso. Status bar e conteúdo dinâmico (relógio, avatares, datas) sempre acendem: anote e siga. O heatmap é para você, não para o repo.
+
+Depois abra os dois no mesmo tamanho e passe pelos eixos abaixo. Sobreponha a 50% de opacidade quando a composição parece próxima mas "algo está errado"; o deslocamento salta aos olhos.
 
 ## Os 12 eixos
 
@@ -95,6 +103,10 @@ Veredito por eixo, por tela:
 | 4 Fonte | DIVERGE | "Ver detalhes" | "VER DETALHES" |
 | 6 Espaçamento | OK | 20 | 20 |
 | 11 A11y | DIVERGE | — | botão fechar 32×32 (< 48) |
+
+## Modos (light / dark)
+
+`get_variable_defs` devolve só o modo padrão. Quando o design system tem tema escuro e o arquivo do Figma tem modo dark (frame irmão ou troca de modo na coleção), peça o nó do frame dark, tire o screenshot dele, bombeie o widget sob o tema escuro e mantenha um snapshot por modo (`order_card.light.json`, `order_card.dark.json`). Os eixos 1, 2, 5 e 11 (contraste) são os que costumam divergir só no dark.
 
 ## Loop
 

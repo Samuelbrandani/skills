@@ -8,8 +8,8 @@ Para cada texto, número e imagem do Figma, nomeie o campo da entity que o alime
 
 | Elemento no Figma | Campo | Existe hoje? |
 |---|---|---|
-| "Maria Helena Souza" | `Opportunity.patientName` | sim |
-| "~4 km da sua residência" | `OpportunityDetail.distanceKm` | não — backend não entrega |
+| "Ana Carolina Lima" | `Order.customerName` | sim |
+| "Chega em ~25 min" | `OrderDetail.etaMinutes` | não — backend não entrega |
 
 Elemento sem dono é uma pergunta para produto, não um texto fixo no widget. A entity é classe tipada com `fromJson`/`toJson`; a view nunca lê `Map` cru.
 

@@ -24,7 +24,7 @@ import 'support/design_probe.dart';
 void main() {
   setUpAll(loadAppFonts); // real fonts, or text is measured with Ahem
 
-  testWidgets('OrderCard matches Figma 7880:10562', (tester) async {
+  testWidgets('OrderCard matches Figma 1234:1100', (tester) async {
     await tester.binding.setSurfaceSize(const Size(390, 1200)); // frame width
     await tester.pumpWidget(appHarness(const OrderCard(order: richOrderFixture)));
     await tester.pumpAndSettle();
@@ -32,11 +32,18 @@ void main() {
     final probe = probeDesign(tester.element(find.byType(OrderCard)), label: 'order_card');
     expectDesignSnapshot(probe, path: 'test/design/snapshots/order_card.json');
     expectMinTapTargets(probe); // 48 dp
+    expectNoOverflow(probe); // no Flex overflow, no clipped text
   });
 }
 ```
 
 `probeDesign` measures; `expectDesignSnapshot` writes the JSON the first time and **fails when a number changes** afterwards — a regression net in text that diffs legibly in a PR and sees exactly what the image golden did not. Accept an intentional change with `UPDATE_DESIGN_SNAPSHOTS=true`.
+
+`loadAppFonts` registers the fonts in `FontManifest.json` **and** the `google_fonts` TTFs bundled as assets (`assets/google_fonts/Inter-SemiBold.ttf` → family `Inter_600`, the name google_fonts puts in the `TextStyle`). Also set `GoogleFonts.config.allowRuntimeFetching = false` in the test setup, so a missing file fails instead of silently falling back. If a text node in the JSON still shows a width of exactly `fontSize × characters`, it was measured with Ahem.
+
+What the probe records beyond the obvious: icon `size`/`color` **resolved** from the ambient `IconTheme` (with `sizeFrom`/`colorFrom`), one `spans` entry per `TextSpan` run with its merged style, `overflow` in px on a `Row`/`Column` that overflows, `didOverflow` on text cut by `maxLines` or clipped on a single line, `tapTarget` on buttons, `InkWell`/`GestureDetector` (tap, long press, double tap), `ListTile`, `Checkbox`, `Switch`, `Radio`, FAB and popup menus, and `source`/`width`/`height`/`fit`/`tint` on `SvgPicture`-like widgets read by field name, so no package import is needed.
+
+For axis 12, pump once more under `MediaQuery(data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(1.3)))` (Flutter < 3.16: `textScaleFactor: 1.3`) with the longest seed text and call `expectNoOverflow(probe, allowTruncated: {...})`, listing only texts the Figma itself ellipsizes. Do not rely on the test failing by itself: a `RenderFlex` overflow is not always surfaced as a test exception.
 
 `appHarness` is whatever the repo uses to pump a widget with its theme and localization; the scan lists existing `pumpApp`-style helpers. If there is none, wrap in `MaterialApp(theme: <the app's theme>)`. A widget probed without the app's theme measures Material defaults, not the design system.
 
@@ -76,7 +83,7 @@ Save the capture next to the Figma PNG, versioned, with a name that ties `screen
 | 9 | Literal text, with accents and punctuation | probe |
 | 10 | States — every Figma state (loading, empty, error, disabled, selected, pressed) rendered and captured | eye, one capture per state |
 | 11 | Accessibility — tap targets ≥ 48 dp, semantics on icon-only controls, contrast of text on its background ≥ 4.5:1 | probe (`expectMinTapTargets`) + `meetsGuideline(textContrastGuideline)` + eye |
-| 12 | Resilience — 1.3× text scale without overflow or clipped text, longest seed text, 360 and 430 widths still hold | probe (`didOverflow`) + eye |
+| 12 | Resilience — 1.3× text scale without overflow or clipped text, longest seed text, 360 and 430 widths still hold | probe (`expectNoOverflow`: Flex `overflow`, text `didOverflow`) at 1.3× + eye |
 
 Axes 10–12 are what separates "matches the screenshot" from "a designer would sign it off". They are not optional in `implement` mode; in `audit` mode report them with the same rigor.
 
@@ -93,7 +100,7 @@ Verdict per axis, per screen:
 
 `DIVERGE` → fix → measure and look again. No limit on rounds. Exit when every axis is `OK` or has a written justification.
 
-Acceptable justification: "the Figma uses radius 12; the product scale has 16; decision of 2026-09-04 keeps 16". Not acceptable: "small difference", "acceptable", "no time".
+Acceptable justification: "the Figma uses radius 12; the product scale has 16; decision of <date> keeps 16". Not acceptable: "small difference", "acceptable", "no time".
 
 If both checks pass and the eye still sees a difference, the defect is **in this axis list or in the probe**: add the missing axis, teach the probe to measure the missing property, and redo the pass. Both are living artifacts.
 

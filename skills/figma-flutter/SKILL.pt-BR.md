@@ -21,7 +21,7 @@ Se o pedido não disser qual: tela existe + pedido é pergunta → `auditar`; te
 ## Fase 0 — Pré-voo (bloqueante)
 
 1. `whoami` no MCP do Figma. Se ele não existe ou falha, o servidor não está conectado ou autorizado: autorize do jeito do seu agente (Claude Code: `authenticate` e entregue a URL ao usuário; Codex: `codex mcp login figma` ou a variável `FIGMA_OAUTH_TOKEN` — veja `references/pt-BR/agents.md`) e **não caia em fallback** por prosa, captura antiga ou memória. Enquanto o usuário autoriza, rode a fase 2 (perfil do repo) — ela não depende do Figma. No Claude Code as ferramentas reais aparecem como deferred depois da autorização; carregue com `ToolSearch("select:mcp__figma__whoami,mcp__figma__get_metadata,…")` antes de chamar.
-2. Extraia do link: `figma.com/design/<fileKey>/...?node-id=7880-15366` → `fileKey`, `nodeId = 7880:15366` (hífen vira dois-pontos).
+2. Extraia do link: `figma.com/design/<fileKey>/...?node-id=1234-5678` → `fileKey`, `nodeId = 1234:5678` (hífen vira dois-pontos).
 3. `get_metadata` no nó. Em seção ou página ele **estoura o limite do resultado**. O Claude Code salva o resultado num arquivo: não chame de novo, rode `scripts/figma_outline.py <arquivo> --depth 1` para listar as telas com tamanho, e `--node <id> --depth 3` para o outline de uma tela. Agentes que truncam (Codex) devem chamar `get_metadata` por frame de tela desde o início. Anote a **largura do frame** de cada tela. Toda conferência da fase 7 acontece nessa largura; comparar um render de 490 px com um frame de 390 px inventa divergência que não existe.
 4. Orce as chamadas. O MCP trunca em ~20 KB por resposta, e seats Starter/View têm 6 chamadas por mês (`whoami` mostra o seat). Uma tela custa no mínimo metadata + screenshot + variáveis + contexto; planeje o lote antes de chamar e agrupe chamadas independentes numa mensagem.
 5. Se o `CLAUDE.md` / `AGENTS.md` do repo (ou de um diretório pai) exige plano antes de implementar, as fases 0–5 **são o plano**: escreva-as com `references/pt-BR/plan-template.md` e entregue o plano (Claude Code: plan mode; outros agentes: o arquivo do plano mais um "vai" explícito no chat); as fases 6–7 rodam depois da aprovação, possivelmente por outro agente.
@@ -43,10 +43,11 @@ py -3 scripts\repo_scan.py <raiz-do-repo> [feature]       # Windows (ou scripts\
 
 e leia `references/pt-BR/repo-scan.md` para transformar a saída em um **Perfil do Repo**: onde vive o design system (pacote, barrel, classes de token, padrão de acesso), se ele está *pronto*, *parcial* ou *ausente*, onde ficam widgets de feature versus widgets compartilhados, como estado, DI, navegação e entities estão ligados, as convenções de assets, e qual ferramental de verificação já existe. Leia o `CLAUDE.md` e os docs de arquitetura que a varredura listar.
 
-Três regras saem desta fase e não são negociáveis:
+Quatro regras saem desta fase e não são negociáveis:
 
 - **Componente vai onde a arquitetura manda.** Componente reutilizável vai para o pacote do design system com tudo que os irmãos têm (teste, entrada no catálogo, export no barrel). Seção de tela vai para a pasta de widgets da feature. Nunca uma pasta `widgets/` inventada para a ocasião.
 - **Tokens são consumidos do jeito que o repo consome** (`context.colors.primary`, `AppSpacing.md`, `Theme.of(context).extension<…>()`). Se há dois arquivos de token, descubra qual gera código antes de editar.
+- **Imagens e ícones passam pelo componente de imagem do repo** quando a varredura encontra um (um widget que embrulha `Image.*`/`SvgPicture.*` e que a maioria dos arquivos usa, muitas vezes travado por lint próprio). `Image.asset`/`SvgPicture.asset` cru é o fallback só em repo que não tem esse componente.
 - **Catálogo escrito é pista, não verdade.** Reconcilie qualquer catálogo contra o barrel e corrija o doc na mesma passada.
 
 ## Lote de decisões (pergunte uma vez, cedo)
@@ -54,7 +55,7 @@ Três regras saem desta fase e não são negociáveis:
 Algumas decisões são do usuário, e perguntar uma por vez no meio do trabalho trava tudo. Assim que as fases 1 e 2 terminarem, pergunte tudo junto — um `AskUserQuestion` no Claude Code, uma lista numerada no chat nos demais — com a opção recomendada primeiro:
 
 - **Escopo** quando o nó tem vários frames: quais telas ou corpos entram nesta rodada.
-- **Cor de marca vs token de acessibilidade** quando o Figma usa um hex que o design system substituiu de propósito (ex.: rosa da marca vs variante AA).
+- **Cor de marca vs token de acessibilidade** quando o Figma usa um hex que o design system substituiu de propósito (ex.: azul da marca vs a variante AA mais escura).
 - **Dado sem fonte**: como degrada uma estatística, contador ou toggle que o Figma desenha e nenhuma entity entrega (esconder a célula, esconder o bloco, placeholder). Antes, leia as perguntas abertas e bloqueantes da spec; a resposta costuma já estar escrita.
 - **Estados não desenhados** que a tela precisa (botão salvar num form inline, header vazio/incompleto, corpo de seção que o Figma não mostra).
 

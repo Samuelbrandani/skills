@@ -53,6 +53,6 @@ Table, in the format the repo's spec already uses:
 
 | # | Screen | Node | Width | Elements | States in Figma |
 |---|---|---|---|---|---|
-| 1 | List — Open tab | [`7880:9398`](url) | 390 | header, filter chips, period card, card list | default, empty, loading |
+| 1 | List — Open tab | [`1234:1000`](url) | 390 | header, filter chips, period card, card list | default, empty, loading |
 
 Plus, per screen: the Figma PNG saved to disk (the repo's capture folder, e.g. `docs/design/<feature>/<screen>_<node>.png`), the variable list from `get_variable_defs`, and the component sets touched with their variants.

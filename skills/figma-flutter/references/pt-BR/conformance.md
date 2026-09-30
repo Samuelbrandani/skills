@@ -24,7 +24,7 @@ import 'support/design_probe.dart';
 void main() {
   setUpAll(loadAppFonts); // fontes reais, senão o texto é medido com Ahem
 
-  testWidgets('OrderCard bate com Figma 7880:10562', (tester) async {
+  testWidgets('OrderCard bate com Figma 1234:1100', (tester) async {
     await tester.binding.setSurfaceSize(const Size(390, 1200)); // largura do frame
     await tester.pumpWidget(appHarness(const OrderCard(order: richOrderFixture)));
     await tester.pumpAndSettle();
@@ -32,11 +32,18 @@ void main() {
     final probe = probeDesign(tester.element(find.byType(OrderCard)), label: 'order_card');
     expectDesignSnapshot(probe, path: 'test/design/snapshots/order_card.json');
     expectMinTapTargets(probe); // 48 dp
+    expectNoOverflow(probe); // sem overflow de Flex, sem texto cortado
   });
 }
 ```
 
 `probeDesign` mede; `expectDesignSnapshot` grava o JSON na primeira vez e, depois, **falha quando um número muda** — rede de regressão em texto que dá diff legível no PR e enxerga exatamente o que o golden de imagem não via. Para aceitar mudança intencional: `UPDATE_DESIGN_SNAPSHOTS=true`.
+
+`loadAppFonts` registra as fontes do `FontManifest.json` **e** os TTFs do `google_fonts` empacotados como asset (`assets/google_fonts/Inter-SemiBold.ttf` → família `Inter_600`, o nome que o google_fonts põe no `TextStyle`). Também defina `GoogleFonts.config.allowRuntimeFetching = false` no setup do teste, para que um arquivo ausente falhe em vez de cair em fallback calado. Se um nó de texto no JSON ainda mostra largura exatamente `fontSize × caracteres`, ele foi medido com Ahem.
+
+O que o probe registra além do óbvio: `size`/`color` do ícone **resolvidos** do `IconTheme` ambiente (com `sizeFrom`/`colorFrom`), uma entrada em `spans` por trecho de `TextSpan` com o estilo mesclado, `overflow` em px num `Row`/`Column` que estoura, `didOverflow` em texto cortado por `maxLines` ou recortado em linha única, `tapTarget` em botões, `InkWell`/`GestureDetector` (toque, toque longo, duplo), `ListTile`, `Checkbox`, `Switch`, `Radio`, FAB e menus popup, e `source`/`width`/`height`/`fit`/`tint` em widgets do tipo `SvgPicture`, lidos pelo nome do campo, sem importar o pacote.
+
+Para o eixo 12, rode de novo sob `MediaQuery(data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(1.3)))` (Flutter < 3.16: `textScaleFactor: 1.3`) com o texto mais longo do seed e chame `expectNoOverflow(probe, allowTruncated: {...})`, listando só os textos que o próprio Figma trunca. Não conte com o teste falhar sozinho: overflow de `RenderFlex` nem sempre vira exceção no teste.
 
 `appHarness` é o que o repo usa para pumpar um widget com tema e localização; a varredura lista helpers tipo `pumpApp`. Se não há nenhum, embrulhe em `MaterialApp(theme: <tema do app>)`. Widget medido sem o tema do app mede defaults do Material, não o design system.
 
@@ -76,7 +83,7 @@ Salve a captura ao lado do PNG do Figma, versionados, com nome que amarre `tela 
 | 9 | Texto literal, com acento e pontuação | probe |
 | 10 | Estados — todo estado do Figma (loading, vazio, erro, desabilitado, selecionado, pressionado) renderizado e capturado | olho, uma captura por estado |
 | 11 | Acessibilidade — alvos de toque ≥ 48 dp, semantics em controles só-ícone, contraste do texto sobre o fundo ≥ 4,5:1 | probe (`expectMinTapTargets`) + `meetsGuideline(textContrastGuideline)` + olho |
-| 12 | Resiliência — escala de texto 1,3× sem overflow ou corte, texto mais longo do seed, larguras 360 e 430 ainda seguram | probe (`didOverflow`) + olho |
+| 12 | Resiliência — escala de texto 1,3× sem overflow ou corte, texto mais longo do seed, larguras 360 e 430 ainda seguram | probe (`expectNoOverflow`: `overflow` de Flex, `didOverflow` de texto) em 1,3× + olho |
 
 Os eixos 10–12 são o que separa "bate com o screenshot" de "um designer assinaria embaixo". Não são opcionais no modo `implementar`; no modo `auditar`, reporte com o mesmo rigor.
 

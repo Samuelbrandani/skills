@@ -53,6 +53,6 @@ Tabela, no formato que a spec do repo já usa:
 
 | # | Tela | Node | Largura | Elementos | Estados no Figma |
 |---|---|---|---|---|---|
-| 1 | Lista — aba Abertas | [`7880:9398`](url) | 390 | header, chips de filtro, card de período, lista de cards | default, vazio, loading |
+| 1 | Lista — aba Abertas | [`1234:1000`](url) | 390 | header, chips de filtro, card de período, lista de cards | default, vazio, loading |
 
 Mais, por tela: o PNG do Figma salvo em disco (pasta de capturas do repo, ex.: `docs/design/<feature>/<tela>_<node>.png`), a lista de variáveis do `get_variable_defs`, e os component sets tocados com suas variantes.

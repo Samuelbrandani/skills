@@ -14,8 +14,11 @@
 //                                  change afterwards. Accept intentional changes
 //                                  with UPDATE_DESIGN_SNAPSHOTS=true.
 //   expectMinTapTargets(...)     → every tappable widget is at least N logical px.
-//   loadAppFonts()               → loads the fonts declared in pubspec so text is
-//                                  measured with the real family, not Ahem.
+//   expectNoOverflow(...)        → no Flex overflows and no text is clipped or
+//                                  cut by maxLines (run it at 1.3× text scale).
+//   loadAppFonts()               → loads the fonts declared in pubspec and the
+//                                  google_fonts TTFs bundled as assets, so text
+//                                  is measured with the real family, not Ahem.
 //
 // Why: image goldens run with the Ahem test font and no shadows, so they cannot
 // see the exact defects that make a screen diverge from Figma. This probe
@@ -119,7 +122,7 @@ Map<String, Object?> _rect(RenderBox box, Offset origin) {
 
 Map<String, Object?>? _style(Widget widget, Element element) {
   if (widget is RichText) return _text(element);
-  if (widget is Icon) return _icon(widget);
+  if (widget is Icon) return _icon(widget, element);
   if (widget is Image) return _image(widget);
   if (widget is Padding) {
     return <String, Object?>{'padding': _edges(widget.padding)};
@@ -170,6 +173,8 @@ Map<String, Object?>? _style(Widget widget, Element element) {
   if (widget is Flex) {
     return <String, Object?>{
       'direction': widget.direction.name,
+      if (_flexOverflow(widget, element) case final double overflow)
+        'overflow': overflow,
       if (_flexSpacing(widget) case final double spacing) 'spacing': spacing,
       'mainAxisAlignment': widget.mainAxisAlignment.name,
       'crossAxisAlignment': widget.crossAxisAlignment.name,
@@ -200,9 +205,30 @@ Map<String, Object?>? _style(Widget widget, Element element) {
     return <String, Object?>{'tapTarget': true};
   }
   if (extraRecordedTypes.contains(widget.runtimeType.toString())) {
-    return <String, Object?>{};
+    return _reflected(widget);
   }
   return null;
+}
+
+/// Pixels by which the children of a `Row`/`Column` exceed the box on the main
+/// axis (the yellow-and-black stripe). `RenderFlex` keeps this private, so it is
+/// recomputed from the children's sizes and the flex spacing.
+double? _flexOverflow(Flex widget, Element element) {
+  final box = element.renderObject;
+  if (box is! RenderFlex || !box.hasSize) return null;
+  final horizontal = widget.direction == Axis.horizontal;
+  var used = 0.0;
+  var count = 0;
+  box.visitChildren((child) {
+    if (child is RenderBox && child.hasSize) {
+      used += horizontal ? child.size.width : child.size.height;
+      count++;
+    }
+  });
+  used += (_flexSpacing(widget) ?? 0) * (count > 1 ? count - 1 : 0);
+  final available = horizontal ? box.size.width : box.size.height;
+  final overflow = used - available;
+  return overflow > 0.5 ? _round(overflow) : null;
 }
 
 /// `Flex.spacing` exists only on Flutter >= 3.27. Reading it dynamically keeps
@@ -218,22 +244,64 @@ double? _flexSpacing(Flex widget) {
 }
 
 bool _isTapTarget(Widget widget) {
-  if (widget is InkResponse) return widget.onTap != null;
-  if (widget is GestureDetector) {
-    return widget.onTap != null || widget.onTapDown != null;
+  if (widget is InkResponse) {
+    return widget.onTap != null ||
+        widget.onLongPress != null ||
+        widget.onDoubleTap != null;
   }
-  if (widget is ButtonStyleButton) return widget.onPressed != null;
+  if (widget is GestureDetector) {
+    return widget.onTap != null ||
+        widget.onTapDown != null ||
+        widget.onLongPress != null ||
+        widget.onDoubleTap != null;
+  }
+  if (widget is ButtonStyleButton) {
+    return widget.onPressed != null || widget.onLongPress != null;
+  }
   if (widget is IconButton) return widget.onPressed != null;
+  if (widget is FloatingActionButton) return widget.onPressed != null;
+  if (widget is ListTile) return widget.onTap != null || widget.onLongPress != null;
+  if (widget is Checkbox) return widget.onChanged != null;
+  if (widget is Switch) return widget.onChanged != null;
+  if (widget is PopupMenuButton) return widget.enabled;
+  // Radio.onChanged moved to RadioGroup in newer SDKs; read it reflectively.
+  if (widget is Radio) return _dynamicNotNull(widget, 'onChanged');
   return false;
+}
+
+bool _dynamicNotNull(Object widget, String field) {
+  try {
+    // ignore: avoid_dynamic_calls
+    return switch (field) {
+      'onChanged' => (widget as dynamic).onChanged != null,
+      _ => false,
+    };
+  } on NoSuchMethodError {
+    return true;
+  }
 }
 
 Map<String, Object?> _text(Element element) {
   final object = element.renderObject;
   final span = object is RenderParagraph ? object.text : null;
   final style = span?.style;
+  final runs = span is TextSpan ? _runs(span, null) : const <Map<String, Object?>>[];
   return <String, Object?>{
     'text': span?.toPlainText(includeSemanticsLabels: false) ?? '',
-    if (style != null) ...<String, Object?>{
+    if (style != null) ..._textStyle(style),
+    // Text.rich / TextSpan children: one entry per run with its *merged*
+    // style, so a bold word inside a regular sentence is measured too.
+    if (runs.length > 1) 'spans': runs,
+    if (object is RenderParagraph) ...<String, Object?>{
+      'textAlign': object.textAlign.name,
+      if (object.maxLines != null) 'maxLines': object.maxLines,
+      'overflow': object.overflow.name,
+      'didOverflow': object.didExceedMaxLines || _clippedHorizontally(object),
+    },
+  };
+}
+
+Map<String, Object?> _textStyle(TextStyle style) => <String, Object?>{
       'fontFamily': style.fontFamily,
       'fontSize': style.fontSize,
       'fontWeight': style.fontWeight?.value,
@@ -243,23 +311,46 @@ Map<String, Object?> _text(Element element) {
       'color': _color(style.color),
       if (style.decoration != null && style.decoration != TextDecoration.none)
         'decoration': style.decoration.toString(),
-    },
-    if (object is RenderParagraph) ...<String, Object?>{
-      'textAlign': object.textAlign.name,
-      if (object.maxLines != null) 'maxLines': object.maxLines,
-      'overflow': object.overflow.name,
-      'didOverflow': object.didExceedMaxLines,
-    },
-  };
+    };
+
+List<Map<String, Object?>> _runs(TextSpan span, TextStyle? inherited) {
+  final style = inherited == null ? span.style : inherited.merge(span.style);
+  final runs = <Map<String, Object?>>[
+    if (span.text case final String text when text.isNotEmpty)
+      <String, Object?>{'text': text, if (style != null) ..._textStyle(style)},
+  ];
+  for (final child in span.children ?? const <InlineSpan>[]) {
+    if (child is TextSpan) runs.addAll(_runs(child, style));
+  }
+  return runs;
 }
 
-Map<String, Object?> _icon(Icon widget) => <String, Object?>{
-      'codePoint': widget.icon?.codePoint,
-      'iconFamily': widget.icon?.fontFamily,
-      'size': widget.size,
-      'color': _color(widget.color),
-      if (widget.semanticLabel != null) 'semanticLabel': widget.semanticLabel,
-    };
+/// A single-line (non-wrapping) paragraph whose natural width exceeds its box
+/// is clipped or ellipsized even when `didExceedMaxLines` stays false.
+bool _clippedHorizontally(RenderParagraph paragraph) {
+  if (paragraph.softWrap && paragraph.maxLines != 1) return false;
+  final natural = paragraph.getMaxIntrinsicWidth(double.infinity);
+  return natural > paragraph.size.width + 0.5;
+}
+
+/// Size and color are the *resolved* values: an `Icon` without `size`/`color`
+/// takes them from the ambient `IconTheme`, which is the common case in a
+/// design system. `sizeFrom`/`colorFrom` say where each value came from.
+Map<String, Object?> _icon(Icon widget, Element element) {
+  final theme = IconTheme.of(element);
+  final color = widget.color ?? theme.color;
+  return <String, Object?>{
+    'codePoint': widget.icon?.codePoint,
+    'iconFamily': widget.icon?.fontFamily,
+    'size': widget.size ?? theme.size,
+    'sizeFrom': widget.size != null ? 'widget' : 'IconTheme',
+    'color': _color(color),
+    if (widget.color == null && theme.opacity != null && theme.opacity != 1.0)
+      'opacity': _round(theme.opacity!),
+    'colorFrom': widget.color != null ? 'widget' : 'IconTheme',
+    if (widget.semanticLabel != null) 'semanticLabel': widget.semanticLabel,
+  };
+}
 
 Map<String, Object?> _image(Image widget) {
   final provider = widget.image;
@@ -411,6 +502,64 @@ double _round(double value) => (value * 100).roundToDouble() / 100;
 
 Object? _finite(double value) => value.isFinite ? _round(value) : null;
 
+/// Best-effort read of the usual sizing/tint fields on widgets this file does
+/// not import (`SvgPicture`, `CachedNetworkImage`, `VectorGraphic`, `Lottie`).
+/// Missing fields are skipped, so any package version works.
+Map<String, Object?> _reflected(Widget widget) {
+  final out = <String, Object?>{};
+  Object? read(Object? Function(dynamic w) getter) {
+    try {
+      return getter(widget);
+    } on NoSuchMethodError {
+      return null;
+    }
+  }
+
+  // ignore: avoid_dynamic_calls
+  final width = read((w) => w.width);
+  // ignore: avoid_dynamic_calls
+  final height = read((w) => w.height);
+  // ignore: avoid_dynamic_calls
+  final fit = read((w) => w.fit);
+  // ignore: avoid_dynamic_calls
+  final filter = read((w) => w.colorFilter);
+  // ignore: avoid_dynamic_calls
+  final loader = read((w) => w.bytesLoader) ?? read((w) => w.loader);
+  // ignore: avoid_dynamic_calls
+  final url = read((w) => w.imageUrl);
+  // ignore: avoid_dynamic_calls
+  final label = read((w) => w.semanticsLabel);
+  if (width is double) out['width'] = _round(width);
+  if (height is double) out['height'] = _round(height);
+  if (fit is BoxFit) out['fit'] = fit.name;
+  if (filter != null) out['tint'] = _colorFilter(filter.toString());
+  if (loader != null) {
+    // ignore: avoid_dynamic_calls
+    final asset = read((_) => (loader as dynamic).assetName);
+    out['source'] = asset is String ? asset : loader.runtimeType.toString();
+  }
+  if (url is String) out['source'] = url;
+  if (label is String) out['semanticLabel'] = label;
+  return out;
+}
+
+/// `ColorFilter.mode(Color(alpha: 1.0, red: …), BlendMode.srcIn)` and the older
+/// `ColorFilter.mode(Color(0xff112233), …)` both become `#FF112233 srcIn`.
+String _colorFilter(String description) {
+  final hex = RegExp(r'Color\(0x([0-9a-fA-F]{8})\)').firstMatch(description);
+  final blend = RegExp(r'BlendMode\.(\w+)').firstMatch(description)?.group(1);
+  if (hex != null) return '#${hex.group(1)!.toUpperCase()} ${blend ?? ''}'.trim();
+  final parts = RegExp(r'(alpha|red|green|blue): ([0-9.]+)')
+      .allMatches(description)
+      .map((m) => (double.parse(m.group(2)!) * 255).round())
+      .toList();
+  if (parts.length == 4) {
+    final argb = parts.map((v) => v.toRadixString(16).padLeft(2, '0')).join();
+    return '#${argb.toUpperCase()} ${blend ?? ''}'.trim();
+  }
+  return description;
+}
+
 // ---------------------------------------------------------------------------
 // Snapshot
 // ---------------------------------------------------------------------------
@@ -486,18 +635,52 @@ void expectMinTapTargets(Map<String, Object?> probe, {double minSize = 48}) {
   }
 }
 
+/// Throws when any `Row`/`Column` overflows or any text is clipped or cut by
+/// `maxLines`. Pump the widget under `MediaQuery(textScaler: TextScaler.linear(1.3))`
+/// (Flutter < 3.16: `textScaleFactor: 1.3`) and with the longest seed text to
+/// close axis 12. Pass [allowTruncated] for texts that are *meant* to ellipsize.
+void expectNoOverflow(
+  Map<String, Object?> probe, {
+  Set<String> allowTruncated = const <String>{},
+}) {
+  final offenders = <String>[];
+  void walk(Object? node) {
+    if (node is! Map<String, Object?>) return;
+    final overflow = node['overflow'];
+    if (overflow is double) {
+      offenders.add('${node['type']} overflows by ${overflow}px');
+    }
+    if (node['didOverflow'] == true && !allowTruncated.contains(node['text'])) {
+      offenders.add('text clipped: "${node['text']}"');
+    }
+    final children = node['children'];
+    if (children is List) children.forEach(walk);
+  }
+
+  walk(probe['tree']);
+  if (offenders.isNotEmpty) {
+    throw StateError('overflow:\n  ${offenders.join('\n  ')}');
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Fonts
 // ---------------------------------------------------------------------------
 
 bool _fontsLoaded = false;
 
-/// Loads every font family declared in the app's `FontManifest.json` so the
-/// probe measures text with the real family instead of the Ahem test font.
-/// Call once in `setUpAll`. Fonts from `google_fonts` are not in the manifest;
-/// bundle the TTFs in pubspec for tests that need them.
+/// Loads every font family declared in the app's `FontManifest.json`, plus
+/// the `google_fonts` TTFs bundled as assets (`<Family>-<Variant>.ttf`, e.g.
+/// `assets/google_fonts/Inter-SemiBold.ttf`), so the probe measures text with
+/// the real family instead of the Ahem test font. Call once in `setUpAll`.
+///
+/// google_fonts styles use the family name `<Family>_<variant>` (`Inter_600`,
+/// `Inter_regular`); each bundled file is registered under that name and under
+/// the plain family. Also set `GoogleFonts.config.allowRuntimeFetching = false`
+/// in the test setup so a missing file fails instead of hitting the network.
 Future<void> loadAppFonts() async {
   if (_fontsLoaded) return;
+  await _loadBundledGoogleFonts();
   final manifest = await rootBundle.loadStructuredData<List<dynamic>>(
     'FontManifest.json',
     (source) async => json.decode(source) as List<dynamic>,
@@ -515,4 +698,51 @@ Future<void> loadAppFonts() async {
     await loader.load();
   }
   _fontsLoaded = true;
+}
+
+const Map<String, int> _googleFontWeights = <String, int>{
+  'Thin': 100,
+  'ExtraLight': 200,
+  'Light': 300,
+  'Regular': 400,
+  'Medium': 500,
+  'SemiBold': 600,
+  'ExtraBold': 800,
+  'Bold': 700,
+  'Black': 900,
+};
+
+Future<void> _loadBundledGoogleFonts() async {
+  final List<String> assets;
+  try {
+    final manifest = await AssetManifest.loadFromAssetBundle(rootBundle);
+    assets = manifest.listAssets();
+  } on Object {
+    return; // no asset manifest in this test bundle
+  }
+  final file = RegExp(r'(?:^|/)([A-Za-z0-9 ]+)-([A-Za-z]+)\.(?:ttf|otf)$');
+  for (final asset in assets) {
+    final match = file.firstMatch(asset);
+    if (match == null) continue;
+    final family = match.group(1)!;
+    final part = match.group(2)!;
+    final italic = part.contains('Italic');
+    final weightName = part.replaceAll('Italic', '');
+    final weight = weightName.isEmpty
+        ? 400
+        : _googleFontWeights.entries
+            .firstWhere(
+              (e) => weightName == e.key,
+              orElse: () => const MapEntry('Regular', -1),
+            )
+            .value;
+    if (weight < 0) continue; // not a google_fonts file name
+    final variant = weight == 400
+        ? (italic ? 'italic' : 'regular')
+        : '$weight${italic ? 'italic' : ''}';
+    for (final name in <String>['${family}_$variant', family]) {
+      final loader = FontLoader(name)..addFont(rootBundle.load(asset));
+      await loader.load();
+    }
+  }
 }

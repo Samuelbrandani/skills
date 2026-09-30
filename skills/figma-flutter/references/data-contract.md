@@ -8,8 +8,8 @@ For every text, number, and image in the Figma, name the entity field that feeds
 
 | Element in Figma | Field | Exists today? |
 |---|---|---|
-| "Maria Helena Souza" | `Opportunity.patientName` | yes |
-| "~4 km from your home" | `OpportunityDetail.distanceKm` | no — backend does not deliver it |
+| "Ana Carolina Lima" | `Order.customerName` | yes |
+| "Arrives in ~25 min" | `OrderDetail.etaMinutes` | no — backend does not deliver it |
 
 An element without an owner is a question for product, not a hard-coded string in the widget. The entity is a typed class with `fromJson`/`toJson`; the view never reads a raw `Map`.
 

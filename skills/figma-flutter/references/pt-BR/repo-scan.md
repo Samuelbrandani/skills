@@ -10,7 +10,7 @@ python3 scripts/repo_scan.py <raiz-do-repo> [feature]   # só leitura, < 2 s num
 
 Windows: `py -3 scripts\repo_scan.py …` ou `.\scripts\repo_scan.ps1 …`. Em macOS/Linux também dá para chamar `scripts/repo_scan.sh …`, um wrapper do mesmo arquivo Python. O argumento `feature` destaca pacote, docs e testes daquela feature.
 
-Ela imprime: toolchain (fvm, melos/workspace), docs de arquitetura, todo pacote com tag de design system / feature / catálogo, barrels, classes `ThemeExtension`, classes com cara de token, extensions de `BuildContext`, pacotes de estilo e codegen, fontes, pastas de assets e de escala, famílias de ícone usadas no código, o layout de primeiro nível sob cada `lib/`, e o ferramental de verificação que já existe (probe, goldens, carregador de fontes, widgetbook, entrypoints, flags de fake).
+Ela imprime: toolchain (versões do fvm, avisando quando `.fvmrc` e `.fvm/fvm_config.json` divergem; melos/workspace), docs de arquitetura, todo pacote com tag de design system / feature / catálogo, barrels, classes `ThemeExtension`, classes com cara de token, extensions de `BuildContext`, pastas de design system dentro de `lib/` (para app de pacote único), classes de token **com o arquivo**, pacotes de estilo e codegen, fontes (pubspec e `google_fonts` empacotado), plugins do `analysis_options` e regras de lint próprias pelo nome, o componente de imagem/ícone e quantos arquivos ainda chamam `Image.*`/`SvgPicture.*` cru, pastas de assets e de escala, famílias de ícone usadas no código, o layout de primeiro nível sob cada `lib/`, e o ferramental de verificação que já existe (probe, goldens, carregador de fontes, widgetbook, entrypoints, flags de fake).
 
 Depois **leia os docs que ela lista** (`CLAUDE.md` — inclusive o herdado de um diretório pai em monorepo —, `ARCHITECTURE.md`, `docs/README.md`, os ADRs sobre tokens, widgets, testes e ícones, e a spec da feature). Eles sobrepõem qualquer inferência abaixo. Um `CLAUDE.md` pai dizendo "plano primeiro" ou "nunca suba o SDK da raiz" vale para o subprojeto também.
 
@@ -29,7 +29,7 @@ Quando existem duas fontes de token (um `docs/tokens.json` e um `lib/src/foundat
 Responda estas seis perguntas e escreva as respostas no perfil. A varredura dá a evidência; os docs dão a regra.
 
 1. **Componente do design system** (reutilizável, sem conhecimento de domínio: botão, chip, casca de card, input, badge) → `packages/<nome>_design_system/lib/src/<atoms|molecules|components>/`, exportado do barrel, com o mesmo teste e entrada de catálogo que os irmãos têm.
-2. **Organismo de domínio** (reutilizável dentro do produto mas conhece o domínio: `PatientCard`, `OrderSummary`) → onde o repo já os coloca (`core_ui`, `shared/widgets`, `ui/core/ui`). Se ainda não existe nada parecido, a pasta de widgets da própria feature, sinalizado como candidato a promoção.
+2. **Organismo de domínio** (reutilizável dentro do produto mas conhece o domínio: `ProductCard`, `OrderSummary`) → onde o repo já os coloca (`core_ui`, `shared/widgets`, `ui/core/ui`). Se ainda não existe nada parecido, a pasta de widgets da própria feature, sinalizado como candidato a promoção.
 3. **Seção de tela** (usada uma vez) → a pasta de widgets da feature, ao lado da página: `features/<f>/presentation/widgets/`, `lib/src/sections/`, `lib/ui/<f>/widgets/`. Siga a feature irmã mais parecida.
 4. **Página / rota** → o `pages/` ou `screens/` da feature e o arquivo de rotas que a varredura achou (`go_router`, `auto_route`, `flutter_modular`).
 5. **Assets** → a pasta de assets do pacote dono do widget: ícones do design system no pacote do design system, ilustrações de feature no app ou no pacote da feature. Siga os nomes de subpasta existentes (`icons/`, `images/`, `illustrations/`) e as pastas de escala.
@@ -43,7 +43,7 @@ Um parágrafo cada, a partir de evidência, não de suposição:
 - **DI**: módulo `get_it`, providers riverpod, binds do modular. Como uma dependência nova é registrada; se views podem resolver algo sozinhas (normalmente só o cubit da tela no `initState`).
 - **Navegação**: pacote de rotas, como rotas são declaradas, como params são tipados.
 - **Dado**: como entities chegam à view (entity tipada de um use case, nunca `Map` cru), onde vivem fakes/fixtures, qual flag `--dart-define` liga os fakes.
-- **Lint e convenções**: pacote de lint próprio, `analysis_options`, regras como "sem `EdgeInsets` cru" ou "sem `Colors.*`". A varredura lista classes de regra quando há pacote de lint; leia, elas codificam o contrato do design system.
+- **Lint e convenções**: pacote de lint próprio, `analysis_options`, regras como "sem `EdgeInsets` cru" ou "sem `Colors.*`". A varredura lista as regras de lint próprias pelo nome (`no_raw_image`, `no_raw_edge_insets` …) com o arquivo; leia, elas codificam o contrato do design system, e código que as dispara não está pronto.
 - **Entrypoints**: `main_dev.dart` vs `main.dart`, flavors, target web habilitado ou não (decide como a fase 7 renderiza a tela).
 - **Regra de promoção**: o que o repo diz sobre widget usado por duas features (típico: "o PR que cria o segundo uso promove para o pacote compartilhado, com teste e catálogo"). Isso decide onde vão as peças reaproveitadas de onboarding/checkout/etc.
 
@@ -54,17 +54,17 @@ Escreva no topo do relatório, em até 40 linhas.
 ```
 ## Perfil do Repo
 - Toolchain: fvm 3.x · monorepo melos · target web: sim
-- Design system: PRONTO — packages/acme_design_system (barrel acme_design_system.dart, 77 exports)
+- Design system: PRONTO — packages/acme_design_system (barrel acme_design_system.dart, 60 exports)
   tokens: AcmeColors, AcmeTypography, AcmeSpacing, AcmeRadii, AcmeShadows via context.acme.* (ThemeExtension)
-  ícones: AcmeIcons (subconjunto lucide) · svg via SvgPicture · catálogo: widgetbook/ (+ docs/design-system/catalog.md, reconciliar)
+  ícones: AcmeIcons (subconjunto lucide) · imagens/svg via AcmeImage (lint no_raw_image) · catálogo: widgetbook/ (+ docs/design-system/catalog.md, reconciliar)
   componente novo exige: test/<nome>_test.dart + use case no widgetbook + export no barrel
-- Organismos de domínio: packages/core_ui (PatientCard, OpportunityCard …)
+- Organismos de domínio: packages/shared_ui (ProductCard, OrderSummary …)
 - Layout de feature: packages/feature_<x>/lib/src/{pages,sections,components,cubit}
 - Estado/DI/Nav: cubit + módulo get_it por feature · go_router com params tipados
-- Dado: entities de core_domain; fakes atrás de --dart-define=ACME_FAKES=true; seeds em core_data/lib/src/fakes/
+- Dado: entities de domain; fakes atrás de --dart-define=ACME_FAKES=true; seeds em data/lib/src/fakes/
 - Assets: ícones do DS em packages/acme_design_system/assets/icons (svg); imagens do app em packages/app/assets/images com 2.0x/3.0x
 - Verificação: design probe presente (acme_design_system/testing.dart) · fontes carregadas em teste · sem goldens
-- Docs lidos: CLAUDE.md, docs/adr/0007-design-system-tokens.md
+- Docs lidos: CLAUDE.md, docs/adr/00xx-design-tokens.md
 ```
 
 ## 6. Respeitando o perfil

@@ -49,7 +49,8 @@ In the Codex app, Plugins → Figma → Install does the same with a click. Rest
 2. The skill refuses to guess from prose: it authenticates the Figma MCP, reads metadata, screenshots, variables, and design context for every frame.
 3. It scans the repo (`scripts/repo_scan.sh`) to find the design system, token access pattern, feature layout, fakes, and existing verification tooling, and obeys them.
 4. It produces three mapping tables (node → widget, Figma value → token, values without a token), an asset manifest, and a data contract. When the repo demands a plan before code, that document is the plan.
-5. Implementation happens in the repo's architecture. Conformance is measured with `assets/design_probe.dart` (rendered tree → JSON) and checked visually at the Figma frame width across 12 axes.
+5. Implementation happens in the repo's architecture. Conformance is measured with `assets/design_probe.dart` (rendered tree → JSON), diffed with `scripts/png_diff.py`, and checked visually at the Figma frame width across 12 axes.
+6. New design-system components can be registered back in Figma through Code Connect (`label: Flutter`), so the next run reuses them.
 
 The full method is in [`skills/figma-flutter/SKILL.md`](skills/figma-flutter/SKILL.md). A Portuguese mirror is in [`SKILL.pt-BR.md`](skills/figma-flutter/SKILL.pt-BR.md) and `references/pt-BR/`.
 
@@ -61,6 +62,7 @@ Everything in `scripts/` is **read-only and dependency-free** (bash + coreutils,
 |---|---|
 | `scripts/repo_scan.py <root> [feature]` | Prints a Repo Profile: packages, barrels, `ThemeExtension`s, token classes with their files, design-system folders, custom lint rules, the image/icon rendering component, fonts (including bundled `google_fonts`), icon families, asset dirs, feature layout, probe/golden/widgetbook tooling, architecture docs (including a parent `CLAUDE.md`), and conflicting fvm pins. Under 2 s on a 20-package monorepo. `repo_scan.sh` (bash) and `repo_scan.ps1` (PowerShell) are thin wrappers around it. |
 | `scripts/figma_outline.py <saved-metadata> [--node ID] [--depth N]` | Outlines an overflowing `get_metadata` result (a section with many frames) into screens and sizes without loading the XML into context. |
+| `scripts/png_diff.py <figma.png> <app.png> --width <frame> [--out diff.png]` | Resizes both captures to the frame width, tolerates 1 px of resampling, and reports the % of differing pixels and the horizontal bands where they concentrate (plus an optional heatmap). Tells the eye where to look in the "look" check. |
 | `scripts/svg_check.py --dir <folder>` | Flags SVG features `flutter_svg` / `vector_graphics` do not render (filters, CSS `<style>`, `<text>`, embedded images) and export leftovers, before an asset is committed. |
 | `assets/design_probe.dart` | Test helper the agent copies into repos without one: dumps the rendered tree (rect, padding, radius, border, shadow, gradient, fonts and per-span styles, icons resolved from `IconTheme`, images and SVGs, tap targets, Flex overflow, clipped text) to JSON, snapshots it, checks 48 dp tap targets and overflow at 1.3× text scale, and loads bundled `google_fonts` so text is not measured with Ahem. Requires only `flutter_test`. |
 

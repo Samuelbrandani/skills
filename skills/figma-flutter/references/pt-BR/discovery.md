@@ -11,6 +11,7 @@
 | 5 | `get_code_connect_map` (`nodeId`) | mapeamentos Code Connect existentes no arquivo. Code Connect não tem parser Dart, mas times podem registrar widgets Flutter pelo modo template (parserless). Se existe mapeamento, ele nomeia o widget a reusar. |
 | 6 | `search_design_system` (`queries`) | acha o componente de biblioteca por trás de uma instância. Use quando o nome da camada for genérico. |
 | 7 | `download_assets` (`nodeId`, `defaultFormat?`, `defaultScale?`) | um nó por chamada: o export do nó, as imagens raster originais usadas como fill na subárvore (até 20) e os SVGs das camadas vetoriais (até 20, o mesmo conjunto que o `get_design_context` lista). Detalhes em `assets.md`. |
+| 8 | `get_motion_context` (`nodeId`, `recursive?`) | keyframes, durações e curvas de easing dos nós animados (Smart Animate, transições de componente). Chame só quando o nó ou as anotações dizem que algo se move. Mapeie durações para os tokens de duração do repo e easings para `Curves` / `Cubic(x1, y1, x2, y2)`; ignore os trechos CSS/motion.dev que vêm junto. |
 
 ## O nó usa tokens?
 

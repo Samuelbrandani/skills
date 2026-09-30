@@ -66,7 +66,15 @@ The probe does not see composition: swapped order, missing element, inverted vis
 
 Resizing to the frame width is not optional: the same padding and fonts inside a box 25% wider produce a screen that looks cramped and small, and the divergence is in the method, not in the code. Navigate to the exact state the Figma node shows (right tab, filter applied, right item) and capture.
 
-Save the capture next to the Figma PNG, versioned, with a name that ties `screen ↔ node`. Then open both at the same size and go through the axes below. Overlay them at 50% opacity when the composition looks close but "something is off"; the offset jumps out.
+Save the capture next to the Figma PNG, versioned, with a name that ties `screen ↔ node`. Then diff them:
+
+```
+python3 scripts/png_diff.py docs/design/<f>/<screen>_<node>.png docs/design/<f>/<screen>_<node>.app.png --width 390 --out /tmp/<screen>.diff.png
+```
+
+Both images are resized to the frame width (a 2× Figma export and a 3× device capture compare fine), a pixel only counts when nothing within 1 px on the other side matches it, and the report lists the 16 px bands where divergence concentrates, top to bottom. Read it like this: a single band near the top and a taller app render → extra spacing up there; a run of bands under one card → that card's padding or font; one band at an icon's y → wrong drawing or size. Resampling the same screen stays around 1% with no band ≥ 5%; exit code 1 means some band crossed that. The status bar and dynamic content (clock, avatars, dates) always light up: note them and move on. The heatmap is for you, not for the repo.
+
+Then open both at the same size and go through the axes below. Overlay them at 50% opacity when the composition looks close but "something is off"; the offset jumps out.
 
 ## The 12 axes
 
@@ -95,6 +103,10 @@ Verdict per axis, per screen:
 | 4 Font | DIVERGE | "See details" | "SEE DETAILS" |
 | 6 Spacing | OK | 20 | 20 |
 | 11 A11y | DIVERGE | — | close button 32×32 (< 48) |
+
+## Modes (light / dark)
+
+`get_variable_defs` returns only the default mode. When the design system has a dark theme and the Figma file has a dark mode (a sibling frame or a mode switch on the collection), ask for the dark frame's node, take its screenshot, pump the widget under the dark theme, and keep one snapshot per mode (`order_card.light.json`, `order_card.dark.json`). Axes 1, 2, 5 and 11 (contrast) are the ones that usually diverge only in dark.
 
 ## Loop
 

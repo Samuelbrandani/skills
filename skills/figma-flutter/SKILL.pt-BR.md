@@ -92,9 +92,13 @@ Siga a arquitetura do repo, não a desta skill. O que esta skill acrescenta:
 Duas conferências, ambas obrigatórias, porque pegam defeitos diferentes:
 
 - **Medir** — despejar a árvore renderizada em JSON (rect, padding, raio, borda, sombra, gradiente, cor, família/tamanho/peso/altura/letter-spacing da fonte, glifo do ícone, asset da imagem, alvos de toque) e comparar número contra número com o Figma. Pega 2 px, peso 600 vs 700, sombra ausente. Use o probe do repo se houver; senão copie `assets/design_probe.dart` (compila em Flutter ≥ 3.10).
-- **Olhar** — render real com as fontes do app na largura do frame do Figma, ao lado do `get_screenshot`. Pega ordem trocada, elemento faltando, hierarquia invertida, ícone errado.
+- **Olhar** — render real com as fontes do app na largura do frame do Figma, ao lado do `get_screenshot`. Pega ordem trocada, elemento faltando, hierarquia invertida, ícone errado. Rode antes `scripts/png_diff.py <figma.png> <app.png> --width <frame> --out diff.png`: ele lista as faixas horizontais onde os dois divergem, e o olho começa onde está o problema.
 
 Cada um dos 12 eixos sai `OK` ou `DIVERGE` com o valor dos dois lados. Loop até zerar. Divergência que não é bug vira linha justificada; nunca some em silêncio.
+
+Quando o design system tem tema escuro e o arquivo do Figma tem modo dark, as duas conferências rodam uma vez por modo (`<nome>.light.json` / `<nome>.dark.json`, uma captura cada).
+
+**Feche o ciclo com Code Connect.** Para cada componente do design system criado ou estendido nesta rodada, ofereça registrá-lo no arquivo do Figma (`add_code_connect_map` com `label: "Flutter"`, o nó do component set, o nome do widget e o caminho do fonte; ou `get_code_connect_suggestions` → usuário confirma → `send_code_connect_mappings` para vários). Isso escreve no arquivo compartilhado do Figma, então pergunte antes. A próxima execução lê de volta na fase 1 (`get_code_connect_map`) e reusa o widget em vez de refazê-lo. Code Connect exige plano Organization ou Enterprise; sem ele, pule e diga isso.
 
 ## Entregável
 
@@ -111,5 +115,6 @@ Não declare pronto sem:
 - [ ] todo asset é o export original do Figma, checado pelo `svg_check.py`, registrado e renderizado no tamanho certo
 - [ ] fake do app cobrindo o caso rico do Figma
 - [ ] árvore renderizada medida e comparada número a número
-- [ ] os 12 eixos fechados por tela, na largura do frame
+- [ ] os 12 eixos fechados por tela, na largura do frame (e por modo quando há tema escuro); `png_diff.py` sem faixa sem explicação
+- [ ] componentes do design system novos ou estendidos oferecidos para Code Connect (registrado, recusado, ou plano sem Code Connect)
 - [ ] análise estática e testes de todo pacote tocado, verdes

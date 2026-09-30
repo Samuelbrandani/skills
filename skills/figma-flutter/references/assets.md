@@ -15,7 +15,8 @@ Walk `get_metadata` and classify every visual node that is not text or a plain b
 | Vector with blur, drop shadow, inner shadow, mask, or blend | **rasterize** unless the design system already has that effect as a token | PNG/WebP at 1×, 2×, 3× |
 | Simple shape: rectangle, circle, divider, gradient box, dot | **draw in code** with tokens | — |
 | Brand font | not an asset of this screen; must already be in `pubspec` fonts | — |
-| Lottie / animation | ask for the `.json` from the designer; the Figma node is only a frame | — |
+| Lottie / animation file | ask for the `.json` from the designer; the Figma node is only a frame | — |
+| Figma-native motion (Smart Animate, keyframes, component transitions) | not an asset: read it with `get_motion_context` and implement it in code | — |
 
 When unsure whether a node is an icon instance or a drawn group, `search_design_system` with its name, or check for `componentId` in `get_design_context`.
 

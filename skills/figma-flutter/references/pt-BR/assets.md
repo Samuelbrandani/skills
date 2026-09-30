@@ -15,7 +15,8 @@ Percorra o `get_metadata` e classifique todo nó visual que não é texto nem ca
 | Vetor com blur, drop shadow, sombra interna, máscara ou blend | **rasterize**, a menos que o design system já tenha o efeito como token | PNG/WebP em 1×, 2×, 3× |
 | Forma simples: retângulo, círculo, divisor, caixa com gradiente, ponto | **desenhe em código** com tokens | — |
 | Fonte da marca | não é asset desta tela; já deve estar nas fontes do `pubspec` | — |
-| Lottie / animação | peça o `.json` ao designer; o nó do Figma é só um frame | — |
+| Arquivo Lottie / animação | peça o `.json` ao designer; o nó do Figma é só um frame | — |
+| Movimento nativo do Figma (Smart Animate, keyframes, transições de componente) | não é asset: leia com `get_motion_context` e implemente em código | — |
 
 Na dúvida se um nó é instância de ícone ou grupo desenhado, `search_design_system` com o nome, ou procure `componentId` no `get_design_context`.
 
